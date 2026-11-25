@@ -59,6 +59,8 @@ jobs:
 
   deploy:
     needs: build
+    # 仅在默认分支部署（PR 分支只跑构建校验，避免环境保护导致红灯）
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

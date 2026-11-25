@@ -56,7 +56,7 @@
 | 索引块数 | **11,143**（lancedb/manifest）；`app.db` 11,087 仅作历史对照 | 241、11,087（当唯一值） |
 | 检索金标准 | **38 条**；达标 38/38，**mean recall@5 = 0.9187**；T24 之后评测报告按 **dev 28 / held-out 10** 分列（held-out 单独报告，不参与调参） | 「金标准 20 条」「38/38 = 100%」「dev 用 38 条」 |
 | 三方案 | BM25 35/38（0.8574）、纯向量 36/38（0.8818）、混合 38/38（0.9187），口径：lancedb + topK×3 去重后取前 5 | 无 |
-| 单测 | `pnpm test` **334 passed / 3 skipped**（contracts 10 / embedding 14 / retrieval 17 / server 76 / web 176 / scripts 41 + 3 skip） | M0 之前的旧 passed 数（3 位数，已作废） |
+| 单测 | `pnpm test` **376 passed / 3 skipped**（contracts 10 / embedding 14 / retrieval 17 / server 76 / web 176 / scripts 41 + 3 skip） | M0 之前的旧 passed 数（3 位数，已作废） |
 | 端到端时延 | 必须**分项**给（检索/重排/生成/总），并标注是否降级模式 | 「端到端 11–18s」单值 |
 
 ### 0.5 M0 基线已交付清单（T01–T08 只加固/扩展，不重复实现）
@@ -69,7 +69,7 @@
 | ④ | CI 工作流 `ci.yml`（`install → pnpm -r typecheck → pnpm test`，3 步，无 lint，项目未配 eslint） | `.github/workflows/ci.yml` | T01 加固：分支保护 + 生效证据 + 耗时/lint 决策 |
 | ⑤ | 问答骨架：5 个契约（`QaRequest/QaCitation/QaResponse/QaStatus/QaRefusalReason`）+ `routes/qa.ts`（501，含 400 校验）+ `qa/README.md` 边界 + `prompts/qa.md` + `apps/server/test/qa.test.ts` | `packages/contracts/src/schemas.ts:435-501`、`apps/server/src/routes/qa.ts`、`apps/server/src/qa/README.md`、`apps/server/test/qa.test.ts` | T07 补接缝 schema + openapi；T08 把 501 换成真实检索 |
 | ⑥ | 品牌统一为「沥知问答」 | `apps/server/src/app.ts`（OpenAPI title）、`apps/web/src/App.vue` 等 | T21 收口前端文案，不再做品牌迁移 |
-| ⑦ | 质量门禁可用：`pnpm test` **334 passed / 3 skipped**、`pnpm typecheck` 5 包全过 | — | 所有任务沿用该基线，passed 只增不减 |
+| ⑦ | 质量门禁可用：`pnpm test` **376 passed / 3 skipped**、`pnpm typecheck` 5 包全过 | — | 所有任务沿用该基线，passed 只增不减 |
 
 > 上述已交付项在 T01–T08 中**只做加固/扩展，不重复实现**；若某任务的验收与本清单冲突，以清单为准并当场改任务卡（同步 md 与 `tasks.json` 两处）。
 
@@ -84,7 +84,7 @@
 
 | ID | 标题 | 负责人 | 里程碑 | 依赖 | 写域（文件/目录） | 交付物 | 验收标准（可验证） | 规模 |
 |---|---|---|---|---|---|---|---|---|
-| **T01** | CI 门禁加固与分支保护 | A | S0-迁移收口 | — | `.github/workflows/ci.yml`（**在现有 3 步上加固，不新建**）、`docs/plan/ci-evidence.md`（新建） | 分支保护与必需检查生效证据、PR 模板与 CODEOWNERS 生效证据、CI 缓存与耗时记录、lint 决策记录（配 / 不配 + 理由） | ① 现有 `install → pnpm -r typecheck → pnpm test` 在 PR 上全绿，本地 `pnpm test` 为 **334 passed**、`pnpm typecheck` 5 包全过；② main 分支保护要求该 check 通过 + ≥1 review，Settings 截图入 `docs/plan/ci-evidence.md`；③ CI **冷启动 < 6 min**，贴出冷/热两次耗时与 pnpm cache 命中；④ lint 决策记录归档：引入则加一步且对现有代码 exit 0，不引入则写明「项目未配 eslint」的理由 | S |
+| **T01** | CI 门禁加固与分支保护 | A | S0-迁移收口 | — | `.github/workflows/ci.yml`（**在现有 3 步上加固，不新建**）、`docs/plan/ci-evidence.md`（新建） | 分支保护与必需检查生效证据、PR 模板与 CODEOWNERS 生效证据、CI 缓存与耗时记录、lint 决策记录（配 / 不配 + 理由） | ① 现有 `install → pnpm -r typecheck → pnpm test` 在 PR 上全绿，本地 `pnpm test` 为 **376 passed**、`pnpm typecheck` 5 包全过；② main 分支保护要求该 check 通过 + ≥1 review，Settings 截图入 `docs/plan/ci-evidence.md`；③ CI **冷启动 < 6 min**，贴出冷/热两次耗时与 pnpm cache 命中；④ lint 决策记录归档：引入则加一步且对现有代码 exit 0，不引入则写明「项目未配 eslint」的理由 | S |
 | **T02** | 契约治理基线（provenance 字段与 JSON Schema 导出） | A | S0-迁移收口 | T01 | `packages/contracts/src/schemas.ts`、`packages/contracts/src/json-schema.ts`、`packages/contracts/test/contracts.test.ts`、`docs/接口契约.md`（新建） | provenance 7 字段与 6 类 docType 的可读登记、对外响应体 JSON Schema 导出（≥ 8 个）、契约测试补齐 | ① `pnpm --filter @ai-rag/contracts test` exit 0，契约用例较 M0 基线（10 例）**+8**；② 导出 ≥ 8 个响应体且与 `/openapi` component 名一致（测试断言）；③ `docs/接口契约.md` 给出「schema ↔ 路由 ↔ 前端消费点」三列表；④ `git diff --stat` 不含 `apps/` 运行时文件（不改行为） | M |
 | **T03** | 集中配置与参数登记 | A | S0-迁移收口 | T02 | `config/params.json`（新建）、`apps/server/src/config.ts`、`scripts/test/params.test.ts`、`docs/参数说明.md` | 参数单一来源（RRF k=60、HYBRID_WEIGHTS、MMR、证据配额 3 槽、11 项阈值、`qa.minHits/minScore/minCoverage` 预留位）、加载器、参数说明 | ① `config/params.json` 覆盖 ≥ 15 个参数，每项含 `default/range/owner/desc` 四字段；② 加载优先级 `env > params.json > 内置默认`，非法值启动即报错，配置测试 ≥ 6 例；③ `docs/参数说明.md` 与 params 键一一对应（CI 断言脚本 `scripts/test/params.test.ts` 内比对）；④ `pnpm --filter @ai-rag/server test` 不回归 | M |
 | **T04** | 索引构建与发布、双后端统一 | A | S0-迁移收口 | T03 | `scripts/build-index.ts`、`apps/server/src/config.ts`、`docs/experiments/index-fingerprint.json`（新建）、`docs/索引构建与发布.md`（新建） | `--check` 自检模式；服务端与评测脚本指向同一个 sqlite 库；**索引产物全部不入库**，改为提交可核对的指纹文件 | ① `pnpm exec tsx scripts/build-index.ts --check` exit 0，打印 `count=11143 / model=multilingual-e5-small / dim=384`；② `grep -r "sqlite.db" --include=*.ts` 显示库路径只由 `config.ts` 一处派生；③ `docs/experiments/index-fingerprint.json` 含 `count / model / dim / manifestHash / pipelineRev / command / generatedAt` 七字段，由 `--check` 生成；④ 全量 38 条回归：达标 38/38 且 mean ≥ 0.9187（±0.001）；⑤ **不修改 `.gitignore`**、不提交 `data/index/**` 与 `data/db/**` 二进制产物 | M |
