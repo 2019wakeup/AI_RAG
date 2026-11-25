@@ -318,6 +318,7 @@ E2E_BASE_URL=http://127.0.0.1:3011 pnpm e2e
 | [复现指南](docs/复现指南.md) | 从零跑通的全量命令、端口策略、降级矩阵、FAQ、10 分钟核对清单 |
 | [任务拓扑](docs/plan/task-topology.md) | 里程碑与 T 编号任务、依赖、写域 |
 | [团队分工](docs/团队分工.md) | A–F 成员模块与验收 |
+| [贡献指南](CONTRIBUTING.md) | 认领 Issue、分支/PR 规范、自检清单、合入规则 |
 | [data/corpus/README.md](data/corpus/README.md) | 语料目录结构与文件格式 |
 | [NOTICE.md](NOTICE.md) / [LICENSE](LICENSE) | 许可、版权与免责 |
 | [docs/archive/](docs/archive/README.md) | 旧项目历史材料（开发过程证据，数字以新文档为准） |
