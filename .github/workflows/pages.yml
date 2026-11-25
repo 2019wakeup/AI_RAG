@@ -1,0 +1,68 @@
+name: Pages（任务看板）
+
+# 看板是生成物：Issue / PR 变化或每天定时重建，再发布到 GitHub Pages。
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'scripts/plan-dashboard.ts'
+      - '.github/workflows/pages.yml'
+  issues:
+    types: [ opened, closed, reopened, labeled, unlabeled, edited ]
+  pull_request:
+    types: [ opened, closed, reopened, synchronize ]
+  schedule:
+    - cron: '0 22 * * *'   # 每天 22:00 UTC（北京时间次日 06:00）兜底重建
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        env:
+          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate dashboard（拉取 Issue/PR 实时状态）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm plan:board
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

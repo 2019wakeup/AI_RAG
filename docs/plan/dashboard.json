@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-11-25T13:17:59.078Z",
+  "generatedAt": "2026-11-25T15:00:41.512Z",
   "progress": {
     "done": 5,
+    "doing": 0,
     "total": 28
   },
   "criticalPath": [
