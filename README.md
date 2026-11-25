@@ -9,7 +9,7 @@
 
 - 领域：**沥青路面养护材料**（规范条文 / 论文题录 / 论文全文 / 定量表格 / 材料知识条目 / 企业资料）
 - 技术栈：Vue 3 + Hono + SQLite FTS5 / LanceDB + transformers.js 本地嵌入 + 可选 LLM
-- 规模：语料 6 类、**11,143 块 / 395 文档**；检索金标准 38 条；单测 **334 passed / 3 skipped**
+- 规模：语料 6 类、**11,143 块 / 395 文档**；检索金标准 38 条；单测 **376 passed / 3 skipped**
 - 现状：检索、语料、证据结构与推荐下游应用**已具备**；**问答编排与可信拒答是本课程设计的核心待交付项**（见 [当前状态](#6-当前状态)）
 
 ---
@@ -151,7 +151,7 @@ pnpm -C apps/web run dev -- --port 5175 --strictPort
 #    → 打开 http://localhost:5175
 ```
 
-**端口**：后端 3011、前端 5175（3000 / 3010 / 5173 / 5174 常被其他进程占用）；三个变量必须指向同一后端端口：`PORT` = `API_PROXY_TARGET` 端口 = `E2E_BASE_URL` 端口。
+**端口**：后端 3011、前端 5175（默认 3000 / 5173 常被其它进程占用）；三个变量必须指向同一后端端口：`PORT` = `API_PROXY_TARGET` 端口 = `E2E_BASE_URL` 端口。
 
 **离线 / 降级**（依赖不可用时系统不崩，只是能力降级）：
 
@@ -252,7 +252,7 @@ E2E_BASE_URL=http://127.0.0.1:3011 pnpm e2e
 - **检索评测**：38 条金标准 + 三方案对比；混合检索 mean recall@5 **0.9187**。
 - **问答契约**：`QaRequest` / `QaResponse` / `QaCitation` / `QaRefusalReason` 已在 `packages/contracts` 定义（契约先行）。
 - **推荐下游应用**：5 案例端到端 + 确定性复跑 + 三档降级（LLM/A/C 适配器/LanceDB→SQLite）。
-- **工程质量**：`pnpm typecheck` + `pnpm test`（**334 passed / 3 skipped**）+ GitHub Actions CI。
+- **工程质量**：`pnpm typecheck` + `pnpm test`（**376 passed / 3 skipped**）+ GitHub Actions CI。
 
 ### 🚧 待实现（课程设计核心，按 [任务拓扑](docs/plan/task-topology.md) 推进）
 
