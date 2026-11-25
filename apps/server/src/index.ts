@@ -8,12 +8,16 @@ import { initRelationDb } from './relation/db';
 import { seedFromCorpus } from './relation/seed';
 import { createApp } from './app';
 import { streamChat } from './llm/client';
-import { createVectorStore, resolveEmbeddingModel } from './config';
+import { createVectorStore, getParams, resolveEmbeddingModel } from './config';
 import type { EmbedderLike } from './orchestrator';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 async function main(): Promise<void> {
+  // T03：集中参数先加载并校验（非法 env 值在此直接退出，不进入半可用状态）
+  const params = getParams();
+  console.log(`集中参数已加载：${Object.keys(params).length} 项（config/params.json，env 优先）`);
+
   // 加载根目录 .env（Node 24 内置；不覆盖已存在的环境变量）。
   // 必须在任何读取 env 的逻辑（llmConfigured/resolveEmbeddingModel 等）之前执行。
   const envPath = resolve(REPO_ROOT, '.env');

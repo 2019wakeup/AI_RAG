@@ -21,6 +21,7 @@ import type {
   TargetProfile,
 } from '@ai-rag/contracts';
 import type { VectorStore } from '@ai-rag/retrieval';
+import { getNumber } from './config';
 import { filterByScene } from './relation/db';
 import type { RelationDb } from './relation/db';
 import { mapSceneToTargets } from './adapters/a';
@@ -691,16 +692,14 @@ export function selectMmrHits(
   return chosen;
 }
 
-/** B5：MMR_LAMBDA 环境变量（0–1，非法/缺省 0.7；供后续调参重测） */
+/** B5/T03：MMR λ 来自集中配置（env MMR_LAMBDA 优先，非法值启动即报错） */
 function resolveMmrLambda(): number {
-  const raw = Number(process.env.MMR_LAMBDA);
-  return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.7;
+  return getNumber('retrieval.mmrLambda');
 }
 
-/** B5：MMR_POOL 环境变量（池内重排命中条数，缺省 RERANK_TOP_K） */
+/** B5/T03：MMR 候选池大小来自集中配置（env MMR_POOL 优先，缺省 = RERANK_TOP_K） */
 function resolveMmrPoolSize(): number {
-  const raw = Number(process.env.MMR_POOL);
-  return Number.isInteger(raw) && raw >= 1 && raw <= 20 ? raw : RERANK_TOP_K;
+  return getNumber('retrieval.mmrPool');
 }
 
 /** B5：MMR 池 = 重排 top-K（rel 用重排分，无重排按位置衰减）+ 场景第二查询命中 */
