@@ -3,8 +3,8 @@ import type { VectorStore } from '@ai-rag/retrieval';
 
 /**
  * 问答检索（T08）：问题 → 查询向量 → `VectorStore.search` → 候选 chunk。
- * 与 `routes/kb.ts` 的 `/kb/search` 同构；差别是本模块不读配置（topK 由 index.ts 解析后传入，保持可测），
- * 且向量召回失败一律降级纯 BM25 而不抛错——问答可用性优先，降级经 `vectorUsed` 透出到 trace。
+ * 与 `routes/kb.ts` 的 `/kb/search` 同构；差别：本模块不读配置（topK 由 index.ts 传入，便于测试），
+ * 且向量召回失败一律降级纯 BM25 不抛错（问答可用性优先），降级经 `vectorUsed` 透出到 trace。
  */
 
 /** 检索所需的最小嵌入接口（结构兼容 EmbedderLike，避免 qa/ 反向依赖 orchestrator） */

@@ -8,18 +8,14 @@ import type { QaEmbedder } from '../src/qa/retrieve';
 import { QA_MAX_CITATIONS, QA_MIN_CITATIONS, selectEvidence } from '../src/qa/select';
 
 /**
- * T08 检索与证据选择。
- * 用内存 fake store（不建索引、不落盘）：本组验证「取哪些、怎么编号、字段是否齐全」；
+ * T08 检索与证据选择：内存 fake store（不建索引），验证「取哪些、怎么编号、字段是否齐全」；
  * 真实语料端到端一致性由 T11 集成测试负责（需 data/index，CI 中 skip）。
  */
 
+/** provenance 七字段（sourceDocId 由 mkHit 逐条给） */
 const PROVENANCE = {
-  contentHash: 'h'.repeat(16),
-  embeddingModel: 'multilingual-e5-small',
-  modelVersion: 'v1',
-  dim: 384,
-  pipelineRev: 'test',
-  embeddedAt: '2026-11-25T00:00:00.000Z',
+  contentHash: 'h'.repeat(16), embeddingModel: 'multilingual-e5-small', modelVersion: 'v1',
+  dim: 384, pipelineRev: 'test', embeddedAt: '2026-11-25T00:00:00.000Z',
 };
 
 let seq = 0;
@@ -95,12 +91,13 @@ describe('T08·retrieve', () => {
 });
 
 describe('T08·select', () => {
-  it('多类型命中给出 3–8 条不重复 chunk，且按 score 降序', () => {
+  it('多类型命中给出 3–8 条不重复 chunk、按 score 降序；maxCitations 更小不放大候选池', () => {
     const chosen = selectEvidence(mixedHits(10));
     expect(chosen.length).toBeGreaterThanOrEqual(QA_MIN_CITATIONS);
     expect(chosen.length).toBeLessThanOrEqual(QA_MAX_CITATIONS);
     expect(new Set(chosen.map((h) => h.chunkId)).size).toBe(chosen.length);
     expect(chosen.map((h) => h.score)).toEqual([...chosen.map((h) => h.score)].sort((a, b) => b - a));
+    expect(selectEvidence(mixedHits(10), { maxCitations: 2 }).length).toBeLessThanOrEqual(2);
   });
 
   it('同一篇文献的多个章节块也能凑够下限（不被「同 docId 只留 1 条」卡住）', () => {
@@ -129,10 +126,6 @@ describe('T08·select', () => {
     expect(new Set(chosen.map((h) => h.chunkId)).size).toBe(chosen.length);
     expect(chosen.every((h) => h.text.trim().length > 0)).toBe(true);
   });
-
-  it('maxCitations 更小时不放大候选池', () => {
-    expect(selectEvidence(mixedHits(10), { maxCitations: 2 }).length).toBeLessThanOrEqual(2);
-  });
 });
 
 describe('T08·answerQuestion', () => {
@@ -158,6 +151,11 @@ describe('T08·answerQuestion', () => {
       expect(c.snippet).toBe(src?.text);
       expect(c.snippet.trim().length).toBeGreaterThan(0);
     }
+    // trace 回填（qa.topK=8 → store 侧按 topK 截断）
+    expect(res.trace?.retrievalMs).toBeGreaterThanOrEqual(0);
+    expect(res.trace?.hitCount).toBe(8);
+    expect(res.trace?.topScore).toBeCloseTo(0.95, 5);
+    expect(res.trace?.vectorUsed).toBe(true);
   });
 
   it('本阶段 answer 为空、不冒充拒答（拒答由 T19 接入）', async () => {
@@ -179,16 +177,6 @@ describe('T08·answerQuestion', () => {
     expect(res.refused).toBe(false);
     expect(res.trace?.hitCount).toBe(0);
     expect(QaResponseSchema.safeParse(res).success).toBe(true);
-  });
-
-  it('trace 回填 retrievalMs / hitCount / topScore / vectorUsed', async () => {
-    const { store } = makeStore(mixedHits(10));
-    const res = await answerQuestion({ store, embedder }, { question: '软化点' });
-
-    expect(res.trace?.retrievalMs).toBeGreaterThanOrEqual(0);
-    expect(res.trace?.hitCount).toBe(8); // 默认 qa.topK=8，store 侧按 topK 截断
-    expect(res.trace?.topScore).toBeCloseTo(0.95, 5);
-    expect(res.trace?.vectorUsed).toBe(true);
   });
 
   it('请求 topK 优先于 qa.topK，并同时约束 citations 上限', async () => {

@@ -7,12 +7,9 @@ import { QA_MAX_CITATIONS, selectEvidence } from './select';
 
 /**
  * 问答编排（T08）：`answerQuestion(deps, req) → QaResponse`，供 `routes/qa.ts` 调用。
- *
- * 本阶段（PR1）**只做检索与证据选择**：
- * - `citations` 是真实检索命中的原文片段（`snippet` 逐字取自 `hit.text`，不截断、不摘要）；
- * - `answer` 仍为空字符串，生成与 `[n]` 绑定由 T09 的 `generate.ts` 接入；
- * - 拒答/追问判定由 C 的 `refusal.ts` / `clarify.ts` 提供、由 T19 接入，
- *   因此此处 `refused:false`、`needInfo:[]`（零命中只标 `status:"degraded"`，不冒充拒答）。
+ * 本阶段只做检索与证据选择：`citations[].snippet` 逐字取自命中 `text`（不截断、不摘要）；
+ * `answer` 留空由 T09 接入生成与 `[n]` 绑定；拒答/追问由 C 的 refusal/needinfo 提供、T19 接入，
+ * 因此此处 `refused:false`、`needInfo:[]`（零命中只标 `status:"degraded"`，不冒充拒答）。
  */
 
 export type QaDeps = QaRetrieveDeps;
