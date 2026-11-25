@@ -1,0 +1,122 @@
+# CODEOWNERS · AI_RAG「沥知问答」
+#
+# ⚠️ 首次合并前必做（未完成会导致 GitHub 在 PR 上提示 "Unknown owner" 且无法启用
+#    "Require review from Code Owners" 分支保护）：
+#    1) 由成员 A 把下面 6 个占位句柄替换为真实 GitHub 用户名（或组织 team 句柄）：
+#         @OWNER-A  @OWNER-B  @OWNER-C  @OWNER-D  @OWNER-E  @OWNER-F
+#       也可整体换成 team 形式，例如 @<org>/platform、@<org>/qa-backend。
+#    2) 替换后在本文件顶部把这段注释改成「已替换 @ 2026-__-__」。
+#    3) 在 Settings → Branches 打开 "Require review from Code Owners"。
+#
+# 代号 ↔ 模块（详见 docs/团队分工.md，任务编号详见 docs/plan/task-topology.md）：
+#   @OWNER-A  平台与集成：契约治理 / CI / 集中配置 / 索引构建与发布 / 合入      T01–T05, T07
+#   @OWNER-B  问答链路后端：/api/v1/qa 检索→证据选择→生成→引用绑定→流式      T08–T11
+#   @OWNER-C  可信拒答策略：拒答判据 / 追问 / 置信度 / 拒答评测 / chunk 质量    T17 T18 T20 T22
+#   @OWNER-D  前端问答体验：QaView / [n] 角标 / 拒答追问空态 / 品牌            T12–T14, T21
+#   @OWNER-E  数据与语料治理：域外剔除 / 碎块过滤 / chunk 质量 / QA 金标       T15, T16, T22–T24
+#   @OWNER-F  评测与实验：三方案对比 / qa-eval / 消融 / 报告与复现            T06, T25–T28
+#
+# ⚠️ 规则优先级：GitHub 以「最后匹配到的规则」为准 —— 本文件刻意按「先粗后细」排序，
+#    新增规则请追加到文件末尾对应小节，不要插到粗粒度规则前面。
+# 共享文件（packages/contracts/src/schemas.ts、apps/server/src/app.ts、
+# apps/web/src/router.ts、根 package.json、apps/server/src/config.ts、
+# data/index/**、.github/**）一律要求 A 参与评审。
+
+# ---------------------------------------------------------------- 默认兜底（最粗）
+*                                   @OWNER-A
+
+# ---------------------------------------------------------------- 目录级骨架（次粗）
+/packages/                          @OWNER-A
+/apps/server/                       @OWNER-B
+/apps/web/                          @OWNER-D
+/data/                              @OWNER-E
+/scripts/                           @OWNER-F
+/docs/                              @OWNER-F
+/prompts/                           @OWNER-B
+/config/                            @OWNER-A
+/.github/                           @OWNER-A
+
+# ---------------------------------------------------------------- 平台与契约（覆盖上面的骨架）
+/packages/contracts/                @OWNER-A
+/packages/retrieval/                @OWNER-A
+/packages/embedding/                @OWNER-A
+/apps/server/src/app.ts             @OWNER-A
+/apps/server/src/config.ts          @OWNER-A
+/apps/server/src/index.ts           @OWNER-A
+/apps/server/src/routes/health.ts   @OWNER-A
+/scripts/build-index.ts             @OWNER-A
+/scripts/preflight.ts               @OWNER-A
+/scripts/anonymity-audit.ts         @OWNER-A
+/package.json                       @OWNER-A
+/tsconfig.base.json                 @OWNER-A
+/pnpm-workspace.yaml                @OWNER-A
+/pnpm-lock.yaml                     @OWNER-A
+/README.md                          @OWNER-A
+/docs/plan/                         @OWNER-A
+/docs/团队分工.md                    @OWNER-A
+/docs/复现指南.md                    @OWNER-A @OWNER-F
+/data/index/                        @OWNER-A
+
+# ---------------------------------------------------------------- 后端：问答链路
+/apps/server/src/routes/qa.ts               @OWNER-B
+/apps/server/src/qa/retrieve.ts             @OWNER-B
+/apps/server/src/qa/select.ts                @OWNER-B
+/apps/server/src/qa/index.ts                 @OWNER-B
+/apps/server/src/qa/generate.ts             @OWNER-B
+/apps/server/src/qa/stream.ts               @OWNER-B
+/apps/server/src/routes/                    @OWNER-B
+/apps/server/src/llm/                       @OWNER-B
+/apps/server/src/rag/                       @OWNER-B
+/apps/server/src/report/                    @OWNER-B
+/apps/server/src/relation/                  @OWNER-B
+/apps/server/src/orchestrator.ts            @OWNER-B
+/apps/server/src/qa/                        @OWNER-B
+/apps/server/test/                          @OWNER-B
+
+# ---------------------------------------------------------------- 后端：可信拒答（显式隔离，须放在 /apps/server/ 之后）
+/apps/server/src/qa/refusal.ts              @OWNER-C @OWNER-B
+/apps/server/src/qa/clarify.ts              @OWNER-C @OWNER-B
+/apps/server/src/qa/refusal-reasons.ts      @OWNER-C @OWNER-B
+/scripts/refusal-eval.ts                    @OWNER-C
+
+# ---------------------------------------------------------------- 前端问答体验（须放在 /apps/web/ 之后）
+/apps/web/src/views/QaView.vue                      @OWNER-D
+/apps/web/src/components/CitationBadge.vue          @OWNER-D
+/apps/web/src/components/QaAnswer.vue               @OWNER-D
+/apps/web/src/components/RefusalNotice.vue          @OWNER-D
+/apps/web/src/components/NeedInfoForm.vue           @OWNER-D
+/apps/web/src/api/qa.ts                             @OWNER-D
+/apps/web/src/stores/qa.ts                          @OWNER-D
+/apps/web/src/composables/useEvidenceAnchor.ts      @OWNER-D
+/apps/web/src/utils/copy.ts                         @OWNER-D
+/apps/web/src/components/EvidencePanel.vue          @OWNER-D
+/apps/web/src/router.ts                             @OWNER-D @OWNER-A
+/apps/web/test/                                     @OWNER-D
+
+# ---------------------------------------------------------------- 数据与语料（须放在 /data/ 之后）
+/data/corpus/                       @OWNER-E
+/data/golden/                       @OWNER-E
+/data/db/                           @OWNER-E
+/scripts/validate-corpus.ts         @OWNER-E
+/scripts/chunk-quality-report.ts    @OWNER-C
+/scripts/convert-literature.ts      @OWNER-E
+/scripts/extract-tables.ts          @OWNER-E
+/docs/data/                          @OWNER-E
+/NOTICE.md                          @OWNER-E
+
+# ---------------------------------------------------------------- 评测与实验（须放在 /scripts/ 与 /docs/ 之后）
+/scripts/golden-eval.ts             @OWNER-F
+/scripts/qa-eval.ts                 @OWNER-F
+/scripts/ablation-embedding.ts      @OWNER-F
+/scripts/ablation-mmr.ts            @OWNER-F
+/scripts/query-expansion-eval.ts    @OWNER-F
+/scripts/faithfulness-eval.ts       @OWNER-F
+/scripts/e2e-cases.ts               @OWNER-F
+/scripts/e2e-degradation.ts         @OWNER-F
+/scripts/experiments/               @OWNER-F
+/scripts/test/                      @OWNER-F
+/docs/experiments/                  @OWNER-F
+/docs/实验口径.md                    @OWNER-F
+/docs/报告-完整版.md                 @OWNER-F
+/docs/提交清单.md                    @OWNER-F
+/docs/demo-script.md                @OWNER-F

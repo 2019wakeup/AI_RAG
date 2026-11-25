@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+# 课程设计要求「可复现」：CI 只做确定性检查（类型 + 单测），
+# 需要模型下载/索引构建/LLM 的评测不放在 CI，命令见 docs/复现指南.md。
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck（全仓）
+        run: pnpm -r typecheck
+
+      - name: Unit & integration tests（全仓）
+        run: pnpm test

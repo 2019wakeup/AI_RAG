@@ -1,0 +1,361 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, shallowRef, useTemplateRef, watch } from 'vue'
+
+import { postChat } from '@/api/client'
+import { parseChatMarkdown } from '@/utils/richText'
+import { useRecommendStore } from '@/stores/recommend'
+import type { RecommendationReport } from '@ai-rag/contracts'
+
+const props = defineProps<{ report: RecommendationReport | null }>()
+
+const store = useRecommendStore()
+const question = shallowRef('')
+const sending = shallowRef(false)
+const streaming = shallowRef('')
+const typing = shallowRef(false)
+
+const inputRef = useTemplateRef<{ focus: () => void }>('chatInput')
+const messagesEl = useTemplateRef<HTMLDivElement>('messages')
+
+// LLM 配置状态（UI#12）：健康检查失败时未知，不显示提示。
+const llmConfigured = shallowRef<boolean | null>(null)
+
+onMounted(async () => {
+  // D：打开自动聚焦输入框（等内部 textarea 渲染完成）
+  await nextTick()
+  inputRef.value?.focus()
+  try {
+    const res = await fetch('/api/v1/health')
+    const data = (await res.json()) as { llm?: { configured?: boolean } }
+    llmConfigured.value = data.llm?.configured ?? null
+  } catch {
+    llmConfigured.value = null
+  }
+})
+
+// D：消息区自动滚底
+watch(
+  () => [store.chat.length, streaming.value],
+  async () => {
+    await nextTick()
+    const el = messagesEl.value
+    if (el) el.scrollTop = el.scrollHeight
+  },
+)
+
+const hint = computed(() => {
+  if (sending.value) return '回复中…'
+  if (!question.value.trim()) return '请输入问题'
+  if (llmConfigured.value === false) {
+    return 'LLM 未配置：配置 DEEPSEEK_API_KEY 后可用（当前为降级模式）'
+  }
+  return ''
+})
+
+async function send(): Promise<void> {
+  const q = question.value.trim()
+  if (!q || sending.value) return
+  sending.value = true
+  typing.value = true
+  streaming.value = ''
+  store.chat.push({ role: 'user', content: q })
+  question.value = ''
+  try {
+    // SSE 流式：delta 逐段回填；后端降级为普通 JSON {reply} 时 client 内部兜底。
+    const reply = await postChat(
+      {
+        schemaVersion: '1',
+        question: q,
+        history: [...store.chat],
+        reportContext: props.report ?? undefined,
+      },
+      (delta) => {
+        streaming.value += delta
+      },
+    )
+    store.chat.push({ role: 'assistant', content: reply || streaming.value })
+    streaming.value = ''
+  } catch {
+    store.chat.push({
+      role: 'assistant',
+      content: '对话服务暂时不可用，请稍后重试',
+    })
+  } finally {
+    typing.value = false
+    sending.value = false
+  }
+}
+
+/** 回车发送；中文输入法组词回车（isComposing/Process 键）不误发（F4）。 */
+function onEnterKey(event: KeyboardEvent): void {
+  if (event.isComposing || event.key === 'Process') return
+  event.preventDefault()
+  void send()
+}
+</script>
+
+<template>
+  <div class="chat-panel">
+    <div ref="messages" data-testid="chat-messages" class="chat-messages">
+      <el-empty
+        v-if="store.chat.length === 0 && !streaming && !typing"
+        description="基于当前报告与证据提问，例如：为什么推荐这个方案？"
+        :image-size="48"
+      />
+      <div
+        v-for="(msg, i) in store.chat"
+        :key="i"
+        class="chat-row"
+        :class="msg.role === 'user' ? 'chat-user' : 'chat-assistant'"
+      >
+        <!-- 用户消息纯文本；助手消息轻量 Markdown -->
+        <div v-if="msg.role === 'user'" class="chat-bubble">{{ msg.content }}</div>
+        <div v-else class="chat-bubble chat-md">
+          <template v-for="(block, bi) in parseChatMarkdown(msg.content)" :key="bi">
+            <h4 v-if="block.type === 'heading'" class="chat-md-h4">
+              <template v-for="(tok, ti) in block.runs ?? []" :key="ti">
+                <strong v-if="tok.bold">{{ tok.text }}</strong>
+                <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                <template v-else>{{ tok.text }}</template>
+              </template>
+            </h4>
+            <p v-else-if="block.type === 'paragraph'" class="chat-md-p">
+              <template v-for="(tok, ti) in block.runs ?? []" :key="ti">
+                <strong v-if="tok.bold">{{ tok.text }}</strong>
+                <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                <template v-else>{{ tok.text }}</template>
+              </template>
+            </p>
+            <ul v-else-if="block.type === 'list'" class="chat-md-list">
+              <li v-for="(item, li) in block.items ?? []" :key="li">
+                <template v-for="(tok, ti) in item" :key="ti">
+                  <strong v-if="tok.bold">{{ tok.text }}</strong>
+                  <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                  <template v-else>{{ tok.text }}</template>
+                </template>
+              </li>
+            </ul>
+            <ol v-else class="chat-md-list">
+              <li v-for="(item, li) in block.items ?? []" :key="li">
+                <template v-for="(tok, ti) in item" :key="ti">
+                  <strong v-if="tok.bold">{{ tok.text }}</strong>
+                  <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                  <template v-else>{{ tok.text }}</template>
+                </template>
+              </li>
+            </ol>
+          </template>
+        </div>
+      </div>
+      <div v-if="streaming" class="chat-row chat-assistant">
+        <div class="chat-bubble chat-md">
+          <template v-for="(block, bi) in parseChatMarkdown(streaming)" :key="bi">
+            <h4 v-if="block.type === 'heading'" class="chat-md-h4">
+              <template v-for="(tok, ti) in block.runs ?? []" :key="ti">
+                <strong v-if="tok.bold">{{ tok.text }}</strong>
+                <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                <template v-else>{{ tok.text }}</template>
+              </template>
+            </h4>
+            <p v-else-if="block.type === 'paragraph'" class="chat-md-p">
+              <template v-for="(tok, ti) in block.runs ?? []" :key="ti">
+                <strong v-if="tok.bold">{{ tok.text }}</strong>
+                <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                <template v-else>{{ tok.text }}</template>
+              </template>
+            </p>
+            <ul v-else-if="block.type === 'list'" class="chat-md-list">
+              <li v-for="(item, li) in block.items ?? []" :key="li">
+                <template v-for="(tok, ti) in item" :key="ti">
+                  <strong v-if="tok.bold">{{ tok.text }}</strong>
+                  <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                  <template v-else>{{ tok.text }}</template>
+                </template>
+              </li>
+            </ul>
+            <ol v-else class="chat-md-list">
+              <li v-for="(item, li) in block.items ?? []" :key="li">
+                <template v-for="(tok, ti) in item" :key="ti">
+                  <strong v-if="tok.bold">{{ tok.text }}</strong>
+                  <code v-else-if="tok.code" class="chat-md-code">{{ tok.text }}</code>
+                  <template v-else>{{ tok.text }}</template>
+                </template>
+              </li>
+            </ol>
+          </template>
+        </div>
+      </div>
+      <div v-if="typing" class="chat-row chat-assistant">
+        <div class="chat-bubble chat-typing" data-testid="typing-dots" aria-label="正在回复">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+    <div v-if="hint" data-testid="chat-hint" class="chat-hint">{{ hint }}</div>
+    <div class="chat-input-row">
+      <el-input
+        ref="chatInput"
+        v-model="question"
+        type="textarea"
+        :rows="2"
+        data-testid="chat-input"
+        placeholder="输入追问…"
+        @keydown.enter.exact="onEnterKey"
+      />
+      <el-button
+        type="primary"
+        class="pressable"
+        data-testid="chat-send"
+        :disabled="sending || !question.trim()"
+        @click="send"
+      >
+        {{ sending ? '回复中…' : '发送' }}
+      </el-button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: 12px;
+  padding-right: 4px;
+}
+
+.chat-row {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.chat-user {
+  justify-content: flex-end;
+}
+
+.chat-assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  font-size: 14.5px;
+  border-radius: 10px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* D：消息气泡——user 右侧主色调、assistant 左侧面板色 */
+.chat-user .chat-bubble {
+  background: var(--el-color-primary);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-assistant .chat-bubble {
+  background: var(--el-fill-color);
+  color: var(--el-text-color-primary);
+  border-bottom-left-radius: 2px;
+}
+
+/* 三点脉冲 typing 指示 */
+.chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.chat-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--el-text-color-secondary);
+  animation: chat-pulse 1s ease-in-out infinite;
+}
+
+.chat-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.chat-hint {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+/* 助手消息轻量 Markdown：列表缩进 16px、加粗 600、行高 1.6 */
+.chat-md-h4 {
+  margin: 8px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.chat-md-p {
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+
+.chat-md-p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-md-list {
+  margin: 0 0 4px;
+  padding-left: 16px;
+  line-height: 1.6;
+}
+
+.chat-md-list li {
+  margin: 2px 0;
+}
+
+.chat-md strong {
+  font-weight: 600;
+}
+
+.chat-md-code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(110, 123, 242, 0.14);
+  font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-height: 88px;
+}
+</style>

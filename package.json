@@ -1,0 +1,23 @@
+{
+  "name": "ai-rag",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel -r run dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test && pnpm exec vitest run --root scripts",
+    "build:index": "tsx scripts/build-index.ts",
+    "eval:golden": "tsx scripts/golden-eval.ts lancedb",
+    "eval:corpus": "tsx scripts/validate-corpus.ts",
+    "e2e": "tsx scripts/e2e-cases.ts && tsx scripts/e2e-degradation.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "xlsx": "^0.18.5"
+  }
+}

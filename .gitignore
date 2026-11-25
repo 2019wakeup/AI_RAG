@@ -1,0 +1,31 @@
+# 依赖与构建产物
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# 本地环境（含密钥，禁止入库）
+.env
+.env.*
+!.env.example
+
+# 运行日志与临时文件
+*.log
+.DS_Store
+.analysis/
+.mineru/
+__pycache__/
+*.pyc
+*.bak
+
+# 大体积外部资料（不随仓库分发）
+literature_md/
+reference/
+City_Contest/
+*.zip
+*.7z
+
+# 可重建的索引与嵌入缓存（首次运行 pnpm build:index 重建，见 docs/复现指南.md）
+data/index/
+data/db/

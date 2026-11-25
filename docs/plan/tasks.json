@@ -1,0 +1,448 @@
+[
+  {
+    "id": "T01",
+    "title": "CI 门禁加固与分支保护",
+    "owner": "A",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:infra",
+      "type:feature",
+      "size:S"
+    ],
+    "deps": [],
+    "body": "**背景**：M0 已交付 `.github/workflows/ci.yml`（3 步：`pnpm install --frozen-lockfile` → `pnpm -r typecheck` → `pnpm test`，已开 pnpm cache），项目未配 eslint；缺的是分支保护、生效证据与耗时记录。\n\n**范围**\n- `.github/workflows/ci.yml`：**在现有 3 步上加固**（必要时加缓存/超时），不新建 workflow\n- `docs/plan/ci-evidence.md`（新建）：分支保护 / 必需检查 / PR 模板与 CODEOWNERS 生效截图 + 耗时记录 + lint 决策记录\n\n**验收标准**\n- [ ] 现有 `install → pnpm -r typecheck → pnpm test` 在 PR 上全绿；本地 `pnpm test` 为 **334 passed / 3 skipped**、`pnpm typecheck` 5 包全过\n- [ ] main 分支保护要求该 check 通过 + ≥1 review，Settings 截图入 `docs/plan/ci-evidence.md`\n- [ ] CI **冷启动 < 6 min**：贴出冷/热两次耗时与 pnpm cache 命中情况\n- [ ] lint 决策归档：引入则加一步且对现有代码 exit 0；不引入则写明「项目未配 eslint」的理由\n\n**依赖**：无（M0 基线提交，`ci.yml` 已存在）\n\n**注意事项**：CI 只跑确定性检查（类型 + 单测）；需要模型下载 / 索引构建 / LLM 的评测一律不进 CI，命令写进 `docs/复现指南.md`（T05）。`.github/**` 只有 A 能改。"
+  },
+  {
+    "id": "T02",
+    "title": "契约治理基线（provenance 字段与 JSON Schema 导出）",
+    "owner": "A",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:infra",
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T01"
+    ],
+    "body": "**背景**：`packages/contracts` 是全仓类型真相源，M0 已把 QA 契约加进来，但 provenance/docType 没有可读登记、对外响应体没有 JSON Schema 导出，前端后端一旦各写一份类型就会漂。\n\n**范围**\n- `packages/contracts/src/schemas.ts`：provenance 7 字段、6 类 docType、SearchHit 与 EvidenceRef 同构的显式说明\n- `packages/contracts/src/json-schema.ts`：对外响应体 JSON Schema 导出\n- `packages/contracts/test/contracts.test.ts`：契约测试补齐\n- `docs/接口契约.md`（新建）：schema ↔ 路由 ↔ 前端消费点三列表\n\n**验收标准**\n- [ ] `pnpm --filter @ai-rag/contracts test` exit 0，契约用例较 M0 基线（10 例）**+8**\n- [ ] JSON Schema 可导出全部对外响应体 ≥ 8 个，且与 `/openapi` component 名一致（测试断言）\n- [ ] `docs/接口契约.md` 三列表覆盖 recommend / cases / health / feedback / kb 五个既有路由\n- [ ] `git diff --stat` 不含 `apps/` 运行时文件（不改行为）\n\n**依赖**：T01（CI 门禁先可用）\n\n**注意事项**：只做「整理 + 导出 + 补测试」，不要新增业务字段；QA 的两个接缝 schema 留给 T07。"
+  },
+  {
+    "id": "T03",
+    "title": "集中配置与参数登记",
+    "owner": "A",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:infra",
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T02"
+    ],
+    "body": "**背景**：超参数散落在代码常量与多个 env 名里（RRF k=60、权重、MMR、证据配额 3 槽、11 项阈值），第三方复现不了。\n\n**范围**\n- `config/params.json`（新建）：RRF k、HYBRID_WEIGHTS、MMR_*、证据配额、各阈值、topK，并预留 `qa.minHits / minScore / minCoverage`\n- `apps/server/src/config.ts`：读取 params.json，优先级 env > params.json > 内置默认\n- `scripts/test/params.test.ts`（新建）：键一致性断言\n- `docs/参数说明.md`（新建）\n\n**验收标准**\n- [ ] `config/params.json` 覆盖 ≥ 15 个参数，每个含 `default / range / owner / desc` 四字段\n- [ ] 非法值启动即报错（沿用 `resolveEmbeddingModel` 的行为），配置测试 ≥ 6 例\n- [ ] `docs/参数说明.md` 与 params.json 键一一对应（测试内自动比对，缺一即失败）\n- [ ] `pnpm --filter @ai-rag/server test` 不回归\n\n**依赖**：T02\n\n**注意事项**：`apps/server/src/config.ts` 属共享文件（§3.1），只有 A 改；C 的拒答阈值只能读不能改，需要新阈值走 Issue 登记。"
+  },
+  {
+    "id": "T04",
+    "title": "索引构建与发布、双后端统一",
+    "owner": "A",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:infra",
+      "area:data",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T03"
+    ],
+    "body": "**背景**：服务端 sqlite 后端读 `data/index/sqlite.db`（空库），评测脚本读 `app.db`，所谓「双后端」其实是三份不同的库；且索引产物 110 MB + 模型缓存 1.6 GB 不宜入库。\n\n**范围**\n- `scripts/build-index.ts`：新增 `--check` 自检模式（count / model / dim / 库路径一致性），并输出指纹\n- `apps/server/src/config.ts`：库路径统一派生\n- `docs/experiments/index-fingerprint.json`（新建）：`count / model / dim / manifestHash / pipelineRev / command / generatedAt`\n- `docs/索引构建与发布.md`（新建）\n\n**验收标准**\n- [ ] `pnpm exec tsx scripts/build-index.ts --check` exit 0，打印 `count=11143 / model=multilingual-e5-small / dim=384`\n- [ ] `grep -r \"sqlite.db\" --include=*.ts` 显示库路径只由 `config.ts` 一处派生\n- [ ] `docs/experiments/index-fingerprint.json` 七字段齐全，且由 `--check` 生成（二次运行仅 `generatedAt` 变化）\n- [ ] 全量 38 条回归：达标 38/38 且 mean ≥ 0.9187（±0.001）；T24 之后报告改按 dev 28 + held-out 10 分列\n- [ ] **索引产物全部不入库**：不提交 `data/index/**`、`data/db/**`，**不修改 `.gitignore`**\n\n**依赖**：T03\n\n**注意事项**：`data/index/**` 只有 A 触发重建；其他人不得提交本地重建产物。E 的 T15 合入后由本任务流程再执行一次并回填指纹。首跑重建约 729 s，需写进 `docs/索引构建与发布.md` 与 `docs/复现指南.md`。"
+  },
+  {
+    "id": "T05",
+    "title": "文档口径收口与演示预检脚本",
+    "owner": "A",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:docs",
+      "area:infra",
+      "type:docs",
+      "size:M"
+    ],
+    "deps": [
+      "T04"
+    ],
+    "body": "**背景**：README 有 6 处硬故障（裸 `tsx`、金标准 20 条、11,087 块、13 秒建索引、7 篇、端口/E2E_BASE_URL 缺失），现场照抄即挂。\n\n**范围**\n- `README.md`：6 处逐条修正\n- `docs/复现指南.md`（新建）：全量可复制命令 + 端口策略（3011/5175）+ 后端/模型矩阵\n- `scripts/preflight.ts`（新建）：端口探测 → `/health` → LLM 探活（区分未配置与 402）→ `LLM_OFF=1` 降级\n- `.env.example`：补 `E2E_BASE_URL` / `API_PROXY_TARGET` / `INDEX_DIR` / `RERANK` / `MMR*`\n- `docs/demo-script.md`（现状位于 `docs/archive/`）：数字修正 + 增「问答演示」预留章\n\n**验收标准**\n- [ ] README 每条命令在干净环境原样执行，PR 内逐条贴输出片段\n- [ ] 全仓 grep 不再出现 `11,087`、`金标准 20 条`、`38/38（100%）` 三处旧口径\n- [ ] `pnpm exec tsx scripts/preflight.ts` 输出 4 项探测；LLM 402 时打印「余额不足」且 exit 0\n- [ ] `docs/复现指南.md` 含 ≥ 12 条命令 + 三条故障排查条目（维度不匹配 / 端口占用 / 空库）\n\n**依赖**：T04（索引数字与路径先统一）\n\n**注意事项**：`docs/plan/`、`docs/团队分工.md` 属冻结区，不要在本任务里改；其余 docs 与文档线同学的分工需先对齐。"
+  },
+  {
+    "id": "T06",
+    "title": "评测基线快照（迁移后复位点）",
+    "owner": "F",
+    "milestone": "S0-迁移收口",
+    "labels": [
+      "area:eval",
+      "type:experiment",
+      "size:S"
+    ],
+    "deps": [
+      "T04"
+    ],
+    "body": "**背景**：迁移后所有历史实验数字作废，需要一份可对比的复位点，否则后面「三方案对比」「消融」没有参照。\n\n**范围**\n- `scripts/experiments/snapshot-baseline.ts`（新建）：跑测试数 + 两方案检索指标 + 索引 manifest hash + 环境行\n- `docs/experiments/baseline-<sha>.json`（新建）\n- `docs/experiments/README.md`（新建）：每份 JSON 的生成命令\n\n**验收标准**\n- [ ] JSON 含 `gitCommit / indexManifestHash / env / commands / metrics` 五段\n- [ ] 命令实测复现审计数字：BM25 35/38（mean 0.8574）、混合 38/38（mean 0.9187）\n- [ ] 同机二次运行仅时间戳不同（`diff` 断言）\n- [ ] `docs/experiments/README.md` 为每份 JSON 标注生成命令与口径\n\n**依赖**：T04\n\n**注意事项**：纯向量与重排第四档由 T25 补，本任务只做已能跑的两档，不要提前实现 mode 参数。"
+  },
+  {
+    "id": "T07",
+    "title": "QA 接缝契约（RefusalDecision / NeedInfoSlot）与 OpenAPI",
+    "owner": "A",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:backend",
+      "area:infra",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T02"
+    ],
+    "body": "**背景**：M0 已定义 `QaRequest / QaCitation / QaResponse / QaStatus / QaRefusalReason` 五个契约并有 `apps/server/test/qa.test.ts` 守卫；还缺「B 与 C 之间怎么对接」的接缝 schema、`/openapi` 注册与角标编号校验。\n\n**范围**\n- `packages/contracts/src/schemas.ts`：新增 `RefusalDecisionSchema{refused, reason(QaRefusalReason), confidence(high|medium|low)}`、`NeedInfoSlotSchema{key,label,example?}` + 投影函数（slot → `needInfo` 字符串）\n- `packages/contracts/test/qa-contract.test.ts`（新建）\n- `apps/server/src/app.ts`：`/openapi` 注册 QA 组件\n\n**验收标准**\n- [ ] `qa-contract.test.ts` ≥ 12 例：`refused:true` 时 `refusalReason` 必填、`citations[].n` 从 1 起连续且无重复、`needInfo` 为字符串数组、`status` 三值、`NeedInfoSlot` 投影可复现\n- [ ] `/openapi` 响应含 `/api/v1/qa` 与 7 个 component（M0 的 5 个 + 新增 2 个）（测试断言）\n- [ ] M0 骨架响应（`status:\"not_implemented\"`）仍能通过 `QaResponseSchema.parse`；`QaResponse.needInfo` 保持 `string[]`（字段只增不改）\n- [ ] 前后端均从 `@ai-rag/contracts` 导入，grep 无本地重复定义\n\n**依赖**：T02\n\n**注意事项**：这是 B/C/D 的解锁键，必须最先合入。若确需把 `needInfo` 改成结构化对象，必须同时改前后端两个 PR 并在本 Issue 登记；默认不改。"
+  },
+  {
+    "id": "T08",
+    "title": "问答端点：在 501 骨架上实现检索与证据选择",
+    "owner": "B",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T07",
+      "T03"
+    ],
+    "body": "**背景**：M0 已交付 `apps/server/src/routes/qa.ts` 的 501 骨架（含 400 校验与 `QaResponse` 契约测试），`app.ts` 也已注册 `registerQa`；本任务把 501 换成真实检索链路。\n\n**范围**\n- `apps/server/src/qa/retrieve.ts`、`select.ts`、`index.ts`（新建）：`index.ts` 暴露 `answerQuestion(deps, req) → QaResponse`\n- `apps/server/src/routes/qa.ts`：在既有骨架上改，保留 400 校验，501 → 200\n- `apps/server/test/qa-retrieve.test.ts`（新建）；更新 `qa.test.ts` 的 501 断言\n\n**验收标准**\n- [ ] 请求 `{\"question\":\"SBS 改性沥青软化点要求\"}` → 200，`citations` 3–8 条，每条含 `n/chunkId/sourceDocId/docType/snippet/score`\n- [ ] 每条 citation 的 `chunkId` 可在索引中查到，且 `snippet` 等于该 chunk 原文（非空、不截成标题）\n- [ ] 空库 → 200 且 `citations: []`、`status:\"degraded\"`，不抛异常也不 5xx\n- [ ] `pnpm test` exit 0，passed 不低于 M0 基线 **334**\n\n**依赖**：T07（契约）、T03（阈值）\n\n**注意事项**：证据选择复用 `orchestrator.ts:831-872` 的配额/去重，不要复制后各自演化；`app.ts` 已注册，本任务不改它。拆分建议：PR1 = 501→真实检索（`answer` 仍为空），PR2 = 接 T09 的生成。"
+  },
+  {
+    "id": "T09",
+    "title": "生成与引用绑定（prompt + [n]）",
+    "owner": "B",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M",
+      "blocked"
+    ],
+    "deps": [
+      "T08"
+    ],
+    "body": "**背景**：硬要求 ② 要求回答返回原始证据片段，因此答案里每个断言必须挂 `[n]`，且 `citations[n-1].snippet` 必须来自本次检索的真实 chunk。\n\n**范围**\n- `prompts/qa.md`（新建）：只依据给定 chunk 作答、逐句标注 `[n]`、证据不足必须 `insufficient:true`\n- `apps/server/src/qa/generate.ts`（新建）：生成 + 答案 ↔ `citations[].n` 双向校验 + 无 LLM 时的抽取式降级\n- `apps/server/test/qa-generate.test.ts`（新建）\n\n**验收标准**\n- [ ] 答案中每个 `[n]` 都落在 `citations[].n` 上，越界编号被剔除（单测覆盖越界 / 无编号 / 中英混排）\n- [ ] 有 LLM 时 3 个固定问题各含 ≥ 1 个 `[n]`\n- [ ] 无 LLM 或 402 时返回抽取式答案（拼接证据原句）+ `status:\"degraded\"`，不得返回空答案或 5xx；只有证据不足才 `refused:true`\n- [ ] `trace.generateMs` 回填，prompt 硬约束条款与单测用例一一对应\n\n**依赖**：T08\n\n**注意事项**：当前 DeepSeek key 余额 0（HTTP 402），「有 LLM 时」那一条只能等额度恢复后补验证，本 Issue 带 `blocked` label，但**只标「有 LLM 时」这个子项**——其余子项（引用校验、抽取式降级、单测）照常合入；LLM 侧一律按 `llm: null` 记「未复现」。抽取式降级必须先做对，否则演示时没有答案。若需改 `apps/server/src/llm/client.ts`，必须在 Issue 登记并由 A 评审。"
+  },
+  {
+    "id": "T10",
+    "title": "流式/非流式与无 LLM 降级",
+    "owner": "B",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T09"
+    ],
+    "body": "**背景**：推荐链路已有流式先例（`ChatDock`），问答也要有；且 402 时不能挂起——现场演示全靠这条降级路径。\n\n**范围**\n- `apps/server/src/qa/stream.ts`（新建）：SSE 事件 `meta → delta×n → citation → done`\n- `apps/server/src/routes/qa.ts`：新增 `/api/v1/qa/stream`（新路由注册由 A 在 `app.ts` 加，见 §3.1）\n- `apps/server/test/qa-stream.test.ts`（新建）\n\n**验收标准**\n- [ ] SSE 事件序列符合契约：首帧 `meta` 带 `trace.retrievalMs`，末帧 `done` 带完整 `QaResponse`（逐帧断言）\n- [ ] mock 402 → 非流式返回抽取式答案（`status:\"degraded\"`），流式必须发 `done` 而非挂起，端到端 < 2s\n- [ ] `trace` 分项（`retrievalMs` / `generateMs`）齐全\n- [ ] `pnpm --filter @ai-rag/web test` 不回归（`ChatDock` 未受影响）\n\n**依赖**：T09\n\n**注意事项**：不要把非流式接口的改动混进这个 PR；SSE 分帧格式与前端 T12 的 `askStream()` 必须同步确认（Issue 里贴一帧真实报文）。新增路由需 A 注册，提前在 Issue 登记。"
+  },
+  {
+    "id": "T11",
+    "title": "问答后端集成测试",
+    "owner": "B",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:backend",
+      "type:test",
+      "size:M"
+    ],
+    "deps": [
+      "T09"
+    ],
+    "body": "**背景**：单测用 fake store 只能证明逻辑，端到端还要证明「真实索引 + 契约」对得上。\n\n**范围**\n- `apps/server/test/qa.integration.test.ts`（新建）\n- `apps/server/test/fixtures/qa-*.json`（新建）\n\n**验收标准**\n- [ ] 用例 ≥ 12：6 类 docType 各 1 例 + 空库 + 402 + 超长问题 + prompt 注入 + 无引用答案\n- [ ] 至少 2 例读真实 `data/index` 只读副本（`INDEX_DIR` 指临时目录，不写库）\n- [ ] 用 `app.request()` 不起真实端口，整组耗时 < 20s\n- [ ] 显式断言 `refused` 与 `citations` 的一致性约束（为 T19 预留）\n\n**依赖**：T09（可与 T10 并行）\n\n**注意事项**：纯测试 PR，零生产代码改动；fixtures 里不要放真实企业数据或任何含个人信息的内容。"
+  },
+  {
+    "id": "T12",
+    "title": "前端 QA API 客户端与状态层",
+    "owner": "D",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:frontend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T07"
+    ],
+    "body": "**背景**：前端目前只有 recommend / kb / chat 的调用封装，问答要有一套类型化客户端 + 状态层，否则视图里全是 `any`。\n\n**范围**\n- `apps/web/src/api/qa.ts`（新建）：`askQuestion()` / `askStream()`\n- `apps/web/src/stores/qa.ts`（新建）：Pinia store（loading / answer / citations / refused / needInfo / error）\n- `apps/web/test/qa-client.test.ts`（新建）\n\n**验收标准**\n- [ ] `qa-client.test.ts` ≥ 6 例：200 / 402 / 网络失败 / refused / needInfo / 流式分帧，exit 0\n- [ ] 类型全部 import 自 `@ai-rag/contracts`，grep 无本地 `interface QaResponse` 重复定义\n- [ ] 402 与网络失败时 store 置 `error` 并保留 `partialAnswer`，视图可读\n- [ ] `pnpm --filter @ai-rag/web typecheck` exit 0\n\n**依赖**：T07（契约）\n\n**注意事项**：本任务不需要后端已实现，用 T07 契约 + mock 即可开工；`router.ts` 不在本任务写域内（留给 T13）。"
+  },
+  {
+    "id": "T13",
+    "title": "问答视图 QaView + 路由 + 导航",
+    "owner": "D",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:frontend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T12"
+    ],
+    "body": "**背景**：课程要求「可演示系统」，问答必须有一个能点能看的独立页面，而不是接口文档里的 curl。\n\n**范围**\n- `apps/web/src/views/QaView.vue`（新建）：输入框 / 提交 / 加载骨架 / 答案区 / 证据区\n- `apps/web/src/router.ts`：新增 `/qa` 路由（+1，Issue 登记）\n- `apps/web/src/App.vue`：导航项「智能问答」\n- `apps/web/test/qa-view.test.ts`（新建）\n\n**验收标准**\n- [ ] 访问 `/qa` 渲染，空态给出「问一个沥青养护材料问题」引导 + 3 个示例问题按钮\n- [ ] loading / answer / error 三态可复现，截图存 `docs/reviews/qa/`\n- [ ] 路由懒加载，`pnpm --filter @ai-rag/web build` exit 0 且新增 bundle < 80KB\n- [ ] 组件测试 ≥ 5 例（空态 / 提交 / 加载 / 错误 / 渲染答案）\n\n**依赖**：T12\n\n**注意事项**：`router.ts` 是共享文件，同一时间只允许一个未合入 PR 改它；品牌文案统一在 T21 收口，本任务先用现有品牌占位，避免两处打架。"
+  },
+  {
+    "id": "T14",
+    "title": "引用角标定位与证据联动",
+    "owner": "D",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:frontend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T13",
+      "T09"
+    ],
+    "body": "**背景**：硬要求 ② 要求「返回原始证据片段」，前端必须让 `[n]` 角标一跳就到那段原文，否则等于没返回证据。\n\n**范围**\n- `apps/web/src/components/CitationBadge.vue`（新建）、`apps/web/src/components/QaAnswer.vue`（新建）\n- `apps/web/src/composables/useEvidenceAnchor.ts`（新建）：从 `RecommendView.vue:234-259` 的 `onCite` 抽出\n- `apps/web/src/components/EvidencePanel.vue`：加 `activeId` prop（保持向后兼容）\n\n**验收标准**\n- [ ] 点角标 → 对应 `data-evidence-id` 卡片进入视口且高亮 700ms（happy-dom 断言）\n- [ ] 悬停角标显示 `docType + sourceDocId`，有规范号/DOI 时一并显示\n- [ ] 抽出 `useEvidenceAnchor` 后 `RecommendView` 行为不变（既有测试 exit 0）\n- [ ] 角标可 Tab 聚焦 + Enter 触发（断言 `role` / `tabindex`）\n\n**依赖**：T13、T09（答案里有真实 `[n]`）\n\n**注意事项**：拆分建议：先抽 composable 并回归推荐视图，再接问答视图——两件事放一个 PR 时，回归测试必须单独可见。"
+  },
+  {
+    "id": "T15",
+    "title": "语料域外剔除与碎块过滤",
+    "owner": "E",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:data",
+      "type:feature",
+      "size:L"
+    ],
+    "deps": [
+      "T04"
+    ],
+    "body": "**背景**：`data/corpus/tables/tables.json` 约 12%（128/1041）是 LLM agent、DPR、ColBERT、XGBoost、知识图谱等域外表格，直接威胁「选择一个明确领域」这一条。\n\n**范围**\n- `data/corpus/tables/tables.json`、`data/corpus/literature-full/`：剔除域外块、过滤 < 30 字碎块\n- `scripts/validate-corpus.ts`：新增两类规则（域外 docTitle 黑名单、碎块阈值）\n- `data/corpus/cleaning-rules.json`（新建）：规则可复跑\n- `docs/data/语料清洗报告.md`（新建）、`NOTICE.md`（新建）、`data/corpus/enterprise/README.md`（新建）\n\n**验收标准**\n- [ ] 清洗后 `table` 类 docTitle 黑名单关键词零命中（脚本断言）\n- [ ] `pnpm exec tsx scripts/validate-corpus.ts` exit 0，新规则各带单测\n- [ ] 清洗报告给出「1041 → N」逐类计数 + 10 条被剔除样例（docTitle + 首 100 字）\n- [ ] 语料变更后由 A 按 T04 流程重建索引，混合检索仍 ≥ 38/38（Issue 贴 manifest hash）\n- [ ] `NOTICE.md` 说明不可追溯企业数据的处理口径\n\n**依赖**：T04\n\n**注意事项**：只有 E 写 `data/corpus/**`；合并后进入「语料冻结窗」，之后改语料要重跑 T06/T25/T26。拆两个 PR：规则+测试，再批量数据变更+报告。"
+  },
+  {
+    "id": "T16",
+    "title": "数据来源与清洗说明、数据卡",
+    "owner": "E",
+    "milestone": "S1-QA主链路",
+    "labels": [
+      "area:data",
+      "type:docs",
+      "size:M"
+    ],
+    "deps": [
+      "T15"
+    ],
+    "body": "**背景**：课程要求「明确数据来源 + 清洗过程 + 数据划分」，而全仓目前只有脚本注释；企业数据不可追溯且缺版权口径。\n\n**范围**\n- `docs/data/数据来源与清洗说明.md`（新建）：6 类语料逐类写来源 / 规模 / 清洗规则 / 无效值处理\n- `docs/data/数据卡.md`（新建）、`data/corpus/datacard.json`（新建）\n\n**验收标准**\n- [ ] 6 类语料每类一段，字段齐（来源 / 规模 / 清洗规则 / 无效值处理 / 可追溯性等级）\n- [ ] 数据卡界定「明确领域」边界，列出已知域外残留 ≤ 5 条\n- [ ] 显式写评测集划分：检索金标 38 = **dev 28 + held-out 10**、QA 金标 24（dev 16 / test 8）、端到端 5 案例，互不复用；held-out 只报告不调参\n- [ ] `datacard.json` 可被脚本解析（JSON 校验通过）\n\n**依赖**：T15（数字必须来自清洗后的真实语料）\n\n**注意事项**：本任务只写文档与数据卡，不改语料；数字一律用清洗后的计数，不要沿用旧口径。"
+  },
+  {
+    "id": "T17",
+    "title": "拒答判据核心 + 单测",
+    "owner": "C",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T03",
+      "T07"
+    ],
+    "body": "**背景**：硬要求 ③ 要求证据不足必须拒答，而判据实现为零；这一层必须是可单测的纯函数，否则拒答准确率无法定量。\n\n**范围**\n- `apps/server/src/qa/refusal.ts`（新建）：`decideRefusal({hits, rawScores, coverage, llmInsufficient, thresholds}) → {refused, reason, confidence}`\n- `apps/server/test/qa-refusal.test.ts`（新建）\n\n**验收标准**\n- [ ] 单测 ≥ 15 例：4 判据各自触发 + 优先级（`insufficient_evidence > low_relevance > no_hit`）+ `llm_unavailable` 单列 + 空输入\n- [ ] 纯函数：不引用网络 / DB / `fs`（grep 断言），单次执行 < 1ms\n- [ ] 阈值全部来自 `config/params.json` 的 `qa.*`，文件内无魔法数字\n- [ ] 空 `hits` → `refused:true, reason:\"no_hit\"`；`reason` 必须取自契约枚举 `no_hit / low_relevance / out_of_domain / insufficient_evidence / llm_unavailable`\n\n**依赖**：T03（阈值）、T07（契约枚举）\n\n**注意事项**：物理隔离——C 只写 `apps/server/src/qa/{refusal,clarify}.ts` 与自己的测试，绝不改 `index.ts`（B）、`routes/qa.ts`（B）、`config.ts`（A）。RRF 融合分不可解释，判据里必须用原始相似度。`confidence` 在本任务内一并产出（high/medium/low）。"
+  },
+  {
+    "id": "T18",
+    "title": "追问 needInfo 与缺槽识别",
+    "owner": "C",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T17",
+      "T02"
+    ],
+    "body": "**背景**：硬要求 ③ 的另一种出口是「提示补充信息」：「该用什么沥青」不该被硬拒，而应追问场景/气候/交通等级。契约里 `needInfo` 就是 `string[]`，所以输出的是面向用户的中文提示，不是结构化对象。\n\n**范围**\n- `apps/server/src/qa/clarify.ts`（新建）：缺槽识别 → `collectNeedInfo(text) → string[]`，槽位语义复用 `registry.ts` 的 `FIELD_REGISTRY`\n- `apps/server/test/qa-clarify.test.ts`（新建）\n\n**验收标准**\n- [ ]「该用什么沥青」→ `needInfo` ≥ 2 条中文提示（如「所在气候分区」「交通等级」）\n- [ ]「金坛区高温重载抗车辙」这类完整问题 → `needInfo` 为空\n- [ ] 提示涉及的槽位名必须能对上 `FIELD_REGISTRY` 的 label（测试断言，杜绝自造词）\n- [ ] 单测 ≥ 8 例（含中英混排、超短问句、纯符号输入）\n\n**依赖**：T17、T02（registry 字段定义）\n\n**注意事项**：文件名为 `clarify.ts`（沿用 `apps/server/src/qa/README.md` 的既有约定；早期文档里写作 `needinfo.ts`，一律以 `clarify.ts` 为准）。若确实需要结构化槽位（key/label/example），先走 T07 契约变更，不要在本地扩契约。缺槽判定不依赖 LLM，规则优先。"
+  },
+  {
+    "id": "T19",
+    "title": "拒答接入流水线（接缝由 B 提供）",
+    "owner": "B",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:backend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T08",
+      "T09",
+      "T17",
+      "T18"
+    ],
+    "body": "**背景**：C 的判据是纯函数，但没接进问答流水线就只是死代码；接入属于编排文件 `index.ts` 的所有者（B），这样 C 永远不用改 B 的文件。\n\n**范围**\n- `apps/server/src/qa/index.ts`：`answerQuestion()` 里调用 `decideRefusal()` / `collectNeedInfo()`，拒答时清空 answer，追问时填 `needInfo`，`confidence` 透出到 `trace`\n- `apps/server/test/qa-refusal-integration.test.ts`（新建）\n- **不改** C 的 `refusal.ts` / `clarify.ts`\n\n**验收标准**\n- [ ]「今天天气怎么样」→ `refused:true, refusalReason:\"out_of_domain\"`\n- [ ]「该用什么沥青」→ `refused:false` 且 `needInfo` 非空（追问而非硬拒）\n- [ ] 空库 → `refused:true, refusalReason:\"no_hit\"`，HTTP 200\n- [ ] 端到端 4 例（2 拒 / 1 追问 / 1 正常）稳定通过\n- [ ] `git diff --name-only` 不含 `refusal.ts` / `clarify.ts`（物理隔离自检）\n\n**依赖**：T08、T17、T18\n\n**注意事项**：接缝签名如需变化，走 T07 的契约 Issue，不在编排里打私有补丁。先 rebase 到 T09 之后再做，避免与生成逻辑冲突。"
+  },
+  {
+    "id": "T20",
+    "title": "拒答评测脚本与拒答矩阵",
+    "owner": "C",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:eval",
+      "type:experiment",
+      "size:M"
+    ],
+    "deps": [
+      "T19",
+      "T23"
+    ],
+    "body": "**背景**：「拒答准确率 / 误拒率」目前完全不存在，报告里这一条只能靠本脚本给出数字。\n\n**范围**\n- `scripts/refusal-eval.ts`（新建）：只读打 `/api/v1/qa`，输出混淆矩阵\n- `docs/experiments/refusal-<sha>.json`（新建）\n- `docs/实验口径.md`：拒答相关指标定义行（与 F 共用）\n\n**验收标准**\n- [ ] 输出 4 格计数（应拒 / 误拒 / 漏拒 / 正常）+ 3 指标（拒答准确率、误拒率、追问成功率），支持 `--out=json`\n- [ ] 覆盖 T23 负样本 3 类各 ≥ 3 条；样本不足时打印「样本不足」而不是记 0\n- [ ] 无 LLM key 时跳过 `llm_insufficient` 判据并在结果里标 `n/a`（不伪造 0 分）\n- [ ] 指标定义与 F 的 qa-eval 在 `docs/实验口径.md` 同一行对齐\n\n**依赖**：T19、T23（金标负样本）\n\n**注意事项**：脚本文件归 C（`scripts/refusal-eval.ts`），F 拥有 `qa-eval.ts`，两者不合并、只对齐口径；结果 JSON 用 `refusal-` 前缀独占。"
+  },
+  {
+    "id": "T21",
+    "title": "拒答/追问/空态 UI + 组件测试",
+    "owner": "D",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:frontend",
+      "type:feature",
+      "size:M"
+    ],
+    "deps": [
+      "T14",
+      "T19"
+    ],
+    "body": "**背景**：后端拒答了但前端只显示空白或「出错了」，等于没实现硬要求 ③ 的可观测性；拒答与追问必须有清晰文案与可操作入口。\n\n**范围**\n- `apps/web/src/components/RefusalNotice.vue`（新建）、`apps/web/src/components/NeedInfoForm.vue`（新建）\n- `apps/web/src/utils/copy.ts`（新建）：全部问答文案集中管理\n- `apps/web/src/views/QaView.vue`：四态接入 + 品牌文案收口\n- `apps/web/test/qa-refusal-ui.test.ts`（新建）\n\n**验收标准**\n- [ ] 三种拒答原因各有独立文案，不出现「出错了」类含糊文案（文案全部来自 `copy.ts`，测试断言）\n- [ ] 追问表单提交后请求体携带用户填写的槽位（测试断言 payload）\n- [ ] 组件测试 ≥ 8 例（4 态 + 2 拒答原因 + 追问回填）\n- [ ] 375px 宽度无横向滚动（截图存 `docs/reviews/qa/`）\n\n**依赖**：T14、T19\n\n**注意事项**：品牌文案（旧品牌 → 沥知问答）在本任务一次性收口，避免和 T13 两处改同一段；拒答文案要能对上 `refusalReason` 枚举，不得新增后端不认识的 reason。"
+  },
+  {
+    "id": "T22",
+    "title": "chunk 质量报告",
+    "owner": "C",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:data",
+      "type:experiment",
+      "size:M"
+    ],
+    "deps": [
+      "T15"
+    ],
+    "body": "**背景**：报告第 5 章要讲失败案例，需要能量化「块切得好不好」，目前只有零散直觉（碎块、OCR 噪声、重复）。本任务从 E 改判给 C（E 在关键路径上，C 在 S2 有等待窗口）。\n\n**范围**\n- `scripts/chunk-quality-report.ts`（新建）\n- `docs/experiments/chunk-quality.json`（新建）、`docs/data/chunk质量报告.md`（新建）\n\n**验收标准**\n- [ ] 报告含 6 类 × (count / p50 / p95 / <30 字占比 / contentHash 重复数) 表\n- [ ] `--out` 落盘，二次运行结果稳定（仅时间戳差异）\n- [ ] 识别 ≥ 3 条块质量问题并给修复建议\n- [ ] 结论被 T23 标注抽样引用（5 题来自质量最优的 chunk 区间）\n\n**依赖**：T15（语料清洗后才有意义）\n\n**注意事项**：只读语料，**不改 `data/corpus/**`**；结果 JSON 用 `chunk-quality-` 前缀独占，避免与 F 的实验产物混淆。虽然归 C，但本任务不涉及 `qa/` 代码，属数据侧分析。"
+  },
+  {
+    "id": "T23",
+    "title": "QA 金标集 v1 标注",
+    "owner": "E",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:data",
+      "type:test",
+      "size:L"
+    ],
+    "deps": [
+      "T15",
+      "T16"
+    ],
+    "body": "**背景**：没有 QA 金标，「问答正确率 / 引用正确率 / 拒答准确率」无从谈起，qa-eval 和 refusal-eval 都会空转。\n\n**范围**\n- `data/golden/qa.json`（新建）：24 条，正样本 16 + 负样本 8（域外 / 域内无覆盖 / 信息不足 三类）\n- `data/golden/schema/qa.schema.json`（新建）\n- `docs/data/qa金标标注规范.md`（新建）\n\n**验收标准**\n- [ ] 条数 ≥ 24，正负比 2:1，三类负样本各 ≥ 4 条\n- [ ] 每条 `goldDocIds` ≥ 1 且全部存在于索引（脚本断言，未命中即失败）\n- [ ] 正样本只取自 `standard / literature-full / table`，禁止 `knowledge` / `enterprise` 二次加工语料\n- [ ] JSON Schema 校验通过；标注规范写明「不得照抄 chunk 标题」+ 双人复核流程\n\n**依赖**：T15、T16（语料冻结后才标注，否则返工）\n\n**注意事项**：每条含 `{id, question, goldDocIds[], goldAnswerPoints[], shouldRefuse, needInfoSlots[], difficulty}`；先出 8 条样例对齐格式，再补满 24 条（两个 PR）。这是 E 的关键路径任务，不要拖到 S3。"
+  },
+  {
+    "id": "T24",
+    "title": "金标评审与 dev/held-out 划分",
+    "owner": "E",
+    "milestone": "S2-可信拒答与质量",
+    "labels": [
+      "area:data",
+      "area:eval",
+      "type:test",
+      "size:M"
+    ],
+    "deps": [
+      "T23"
+    ],
+    "body": "**背景**：现有金标准「自己出题自己判卷」（91 个期望文档 100% 在索引内），且 6 条用例的 recall 恰好等于门槛，现场必被追问。Lead 已定：检索金标 38 条拆 dev 28 / held-out 10。\n\n**范围**\n- `data/golden/splits.json`（新建）：`golden-dev` 28 / `golden-heldout` 10；QA 金标 `qa-dev` 16 / `qa-test` 8\n- `docs/data/评测集划分.md`（新建）、`docs/data/qa金标评审记录.md`（新建）\n\n**验收标准**\n- [ ] 四集合两两无交集（脚本断言），计数为 28 / 10 / 16 / 8\n- [ ] 评审记录列出被改写条目 ≥ 3 条 + 改前改后对照\n- [ ] 文档明确「不训练模型，无 train/val；held-out 不参与调参，报告按 **dev 28/28 + held-out 10 单独报告**」\n- [ ] 划分口径与 T06 快照一致（同 topK=5、同 `sourceDocId` 去重规则）\n\n**依赖**：T23\n\n**注意事项**：T25/T26 默认在 dev 上跑、held-out 只跑一次出报告；**全表禁止出现「38/38 = 100%」**。复核人用成员代号署名，不写真实姓名。"
+  },
+  {
+    "id": "T25",
+    "title": "三方案检索对比（含重排第四档）",
+    "owner": "F",
+    "milestone": "S3-实验与提交",
+    "labels": [
+      "area:eval",
+      "type:experiment",
+      "size:M",
+      "blocked"
+    ],
+    "deps": [
+      "T06",
+      "T24"
+    ],
+    "body": "**背景**：硬要求 ④ 要「至少三种检索方案对比」，现在纯向量只能靠 env 间接实现、重排没有评估入口、指标只有 recall@5。\n\n**范围**\n- `scripts/golden-eval.ts`：`runGoldenEval(..., mode)`，mode 取 `bm25 / vector / hybrid / hybrid+rerank`；CLI 加 `--vector` / `--rerank` / `--out=json`\n- 新增 MRR@10 / nDCG@10 / 平均检索时延\n- `scripts/test/golden-eval.test.ts`：mode 分支用例\n- `docs/experiments/retrieval-compare-<sha>.json`（新建）\n\n**验收标准**\n- [ ] 四条命令各出一行结果，同一次运行落同一 JSON\n- [ ] 纯向量零后端改动（`git diff` 不含 `packages/retrieval/`）\n- [ ] 无 LLM key 时 rerank 档打印「未配置」并 exit 0，JSON 中 `rerank: null`\n- [ ] 与 T06 基线一致：BM25 35/38（0.8574）、混合 38/38（0.9187），±0.001\n- [ ] mode 分支单测 ≥ 6 例，`scripts` 全量测试 exit 0\n\n**依赖**：T06、T24（held-out 划分先定）\n\n**注意事项**：纯向量用 `store.search({text:'', vector})` 即可，不改存储层；rerank 档依赖 LLM 额度，402 未解时带 `blocked` label，只交付前三档 + `rerank: null`。"
+  },
+  {
+    "id": "T26",
+    "title": "qa-eval 问答评测脚本",
+    "owner": "F",
+    "milestone": "S3-实验与提交",
+    "labels": [
+      "area:eval",
+      "type:experiment",
+      "size:L",
+      "blocked"
+    ],
+    "deps": [
+      "T11",
+      "T20",
+      "T23"
+    ],
+    "body": "**背景**：课程要求「问答正确率 / 引用证据正确率 / 拒答准确率」，三者目前全部不存在；这是把「问答系统」从演示变成实验的关键任务。\n\n**范围**\n- `scripts/qa-eval.ts`（新建）：答案正确率（裁判 + 要点命中）、引用正确率、拒答准确率（复用 T20 口径）、幻觉率、分项时延\n- `scripts/test/qa-eval.test.ts`（新建）、`docs/experiments/qa-eval-<sha>.json`（新建）\n- `docs/实验口径.md`：指标定义逐条登记（与 T20 共用）\n\n**验收标准**\n- [ ] 输出「方案 × 5 指标」表 + `--out=json`\n- [ ] 无 LLM 时打印「未配置」并写 `llm: null`，不产出 0 分假数据\n- [ ] 指标定义逐条写入 `docs/实验口径.md`，与 T20 同一行定义\n- [ ] 24 条金标全覆盖；无 LLM 整轮 < 30s，有 LLM < 5 min\n- [ ] `--calibrate` 抽 5 条打印人工校准样本\n\n**依赖**：T11、T20、T23\n\n**注意事项**：不要自己另立拒答口径（必须指 T20 的定义）；裁判与生成同厂商的问题要写进报告局限。LLM 402 已定不解决：`blocked` **只标裁判/幻觉率两个 LLM 指标**，①脚本骨架 + 无 LLM 路径照常合入并写 `llm: null`；额度恢复后再做 ②（补裁判指标 + `--calibrate`）。"
+  },
+  {
+    "id": "T27",
+    "title": "消融实验转正",
+    "owner": "F",
+    "milestone": "S3-实验与提交",
+    "labels": [
+      "area:eval",
+      "type:experiment",
+      "size:M"
+    ],
+    "deps": [
+      "T25"
+    ],
+    "body": "**背景**：768 维与 MMR 两项「以数据否决」的结论目前依赖 `.analysis/` 里的一次性脚本（已 gitignore），复现不了就只是传说。\n\n**范围**\n- `scripts/ablation-embedding.ts`（新建）、`scripts/ablation-mmr.ts`（新建）\n- `scripts/query-expansion-eval.ts`：补 `--out` 与结论行\n- `docs/experiments/ablation-<sha>.json`（新建）\n\n**验收标准**\n- [ ] 三条命令在干净环境可跑通，不依赖 `.analysis/`（grep 断言）\n- [ ] 查询扩展复现 35 / 35 / 19（baseline / bigram / synonym）\n- [ ] 每项输出 delta 表（指标 + 相对变化）并由脚本打印结论行\n- [ ] 768 维与 MMR 两项「以数据否决」的结论有可复跑证据 JSON\n\n**依赖**：T25\n\n**注意事项**：768 维需要 e5-base 模型缓存（首次运行自动下载到 `data/index/hf-cache/`，该目录不进仓库），缓存缺失时脚本要打印「模型不可用」而不是崩溃；索引隔离用 `INDEX_DIR` + `--db-path`。"
+  },
+  {
+    "id": "T28",
+    "title": "实验报告、复现验证与提交包收口",
+    "owner": "F",
+    "milestone": "S3-实验与提交",
+    "labels": [
+      "area:docs",
+      "area:eval",
+      "type:docs",
+      "size:L"
+    ],
+    "deps": [
+      "T05",
+      "T16",
+      "T24",
+      "T25",
+      "T26",
+      "T27"
+    ],
+    "body": "**背景**：课程报告 6 章只覆盖 2.5 章（无问题定义、无架构图、无失败案例、局限被删），且所有实验产物散落各处，提交前必须收口成一套可复核的东西。\n\n**范围**\n- `docs/报告-完整版.md`（新建）：问题定义 / 系统架构 / 技术路线 / 实验设计与结果 / 失败案例 / 局限\n- `docs/提交清单.md`（新建）：代码 / 数据 / 文档 / 实验四类 × 路径 × 是否入库\n- `docs/experiments/README.md`、`docs/复现指南.md`（补评测章）、`docs/reviews/qa/`\n\n**验收标准**\n- [ ] 6 章齐全，每章 ≥ 1 表或图，架构图含 QA 子系统（mermaid 源文件一并提交）\n- [ ] 复现验证：另一名成员在干净 clone 上按 `docs/复现指南.md` 跑通 ≥ 8 条命令并逐条贴输出（用成员代号署名）\n- [ ] 报告数字与 `docs/experiments/*.json` 一一交叉引用，grep 无 `11,087` / `20 条` / `100%` 三处旧口径\n- [ ] 失败案例 ≥ 5 条（含 `c01-knowledge` 三方案全挂 → 拒答演示、402 降级、域外表格、ENOBUFS 崩溃）\n- [ ] `docs/提交清单.md` 四类清单完整\n\n**依赖**：T05、T16、T24、T25、T26、T27（所有实验产物先就位）\n\n**注意事项**：拆分建议：先交 6 章正文 + 架构图，再交复现验证记录 + 提交清单（后者必须在全部实验任务合入后写）；LLM 402 导致无法复现的指标要在报告里明写，不要含糊。"
+  }
+]

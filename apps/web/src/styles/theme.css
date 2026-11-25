@@ -1,0 +1,147 @@
+/* ==========================================================================
+ * 主题 Token（UI 二轮）：Dark-first 科技风 + 靛蓝 #6E7BF2
+ * 亮色模式：浅灰底 #F5F6F8 + 白面板（Vercel 式白底克制）
+ * 色彩纪律：颜色只表达状态，装饰零彩色
+ * ========================================================================== */
+
+:root {
+  /* 页面基底（亮色） */
+  --app-page-bg: #f5f6f8;
+  --app-panel-bg: #ffffff;
+  --app-border: #e5e7eb;
+  --app-border-strong: #d5d8df;
+
+  /* Aurora 层级 token（亮色兜底） */
+  --color-page: #f5f6f8;
+  --color-panel: #ffffff;
+  --color-elevated: #ffffff;
+  --app-hairline: rgba(15, 23, 42, 0.08);
+  --app-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --color-data: #0891b2;
+
+  /* 主色渐变 #6E7BF2→#8B5CF6 与数据青 #22D3EE（暗色覆盖，亮色保持克制） */
+  --app-primary-from: #6e7bf2;
+  --app-primary-to: #8b5cf6;
+  --color-data-cyan: #22d3ee;
+
+  /* 靛蓝主色全套（10 级） */
+  --el-color-primary: #6e7bf2;
+  --el-color-primary-light-3: #8b95f5;
+  --el-color-primary-light-5: #a6aef8;
+  --el-color-primary-light-7: #c1c7fa;
+  --el-color-primary-light-8: #cfd3fb;
+  --el-color-primary-light-9: #ebedfd;
+  --el-color-primary-dark-2: #5863c2;
+
+  /* 圆角：卡片外层 12px / 内层 16px 浮层 */
+  --app-radius-card: 12px;
+  --app-radius-inner: 6px;
+  --app-radius-float: 16px;
+}
+
+/* ===== 暗色模式（默认） ===== */
+html.dark {
+  color-scheme: dark;
+
+  /* Aurora Dark：页面 #080B11 / 面板 #0E121A / 高亮 #141A26 / 发丝线 6% */
+  --color-page: #080b11;
+  --color-panel: #0e121a;
+  --color-elevated: #141a26;
+  --app-hairline: rgba(255, 255, 255, 0.06);
+  --app-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --color-data: #22d3ee;
+
+  --app-page-bg: #080b11;
+  --app-panel-bg: #0e121a;
+  --app-border: rgba(255, 255, 255, 0.06);
+  --app-border-strong: rgba(255, 255, 255, 0.1);
+
+  /* Element Plus 变量覆盖 */
+  --el-bg-color: #0e121a;
+  --el-bg-color-overlay: #141a26;
+  --el-bg-color-page: #080b11;
+  --el-fill-color-blank: #0e121a;
+  --el-fill-color: #141a26;
+  --el-fill-color-light: #141a26;
+  --el-fill-color-lighter: #10151f;
+  --el-fill-color-extra-light: #0d1118;
+  --el-fill-color-dark: #1a2230;
+  --el-fill-color-darker: #202a3b;
+
+  --el-border-color: rgba(255, 255, 255, 0.08);
+  --el-border-color-light: rgba(255, 255, 255, 0.08);
+  --el-border-color-lighter: rgba(255, 255, 255, 0.06);
+  --el-border-color-extra-light: rgba(255, 255, 255, 0.04);
+
+  --el-text-color-primary: #e6e8ee;
+  --el-text-color-regular: #c6cad4;
+  --el-text-color-secondary: #8a90a0;
+  --el-text-color-placeholder: #5c6270;
+  --el-text-color-disabled: #454a56;
+
+  --el-mask-color: rgba(11, 14, 20, 0.7);
+  --el-box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --el-box-shadow-light: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+html.dark body {
+  background: var(--app-page-bg);
+  color: var(--el-text-color-primary);
+}
+
+/* ===== 卡片：外层 10px、内层 6px；暗色阴影仅悬浮层 ===== */
+.el-card {
+  border-radius: var(--app-radius-card);
+  background: var(--app-panel-bg);
+  border: 1px solid var(--app-border);
+  transition:
+    box-shadow var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out);
+}
+
+.el-card:hover {
+  border-color: var(--app-hairline);
+  box-shadow: var(--app-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+html:not(.dark) .el-card:hover {
+  box-shadow: var(--app-shadow), inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+
+/* Aurora 玻璃：工具栏/侧栏/浮层与消息提示 */
+.glass-panel {
+  background: color-mix(in srgb, var(--color-elevated) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.el-message,
+.el-notification {
+  background: color-mix(in srgb, var(--color-elevated) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--app-hairline);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--app-border);
+}
+
+.el-card :is(.el-table, .el-descriptions, .el-collapse, .el-input, .el-textarea) {
+  border-radius: var(--app-radius-inner);
+}
+
+html.dark .el-card {
+  box-shadow: none;
+}
+
+html.dark .el-card.is-hover-shadow:hover,
+html.dark .el-card.is-always-shadow {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* 暗色下弱化表格网格线 */
+html.dark .el-table--border,
+html.dark .el-table--group {
+  border-color: var(--app-border);
+}
