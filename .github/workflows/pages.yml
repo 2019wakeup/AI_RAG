@@ -10,8 +10,6 @@ on:
       - '.github/workflows/pages.yml'
   issues:
     types: [ opened, closed, reopened, labeled, unlabeled, edited ]
-  pull_request:
-    types: [ opened, closed, reopened, synchronize ]
   schedule:
     - cron: '0 22 * * *'   # 每天 22:00 UTC（北京时间次日 06:00）兜底重建
   workflow_dispatch:
@@ -23,8 +21,9 @@ permissions:
   pages: write
   id-token: write
 
+# 按 ref 分组：Issue/PR 事件与 main 部署互不取消；同一 ref 只保留最新一次
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
