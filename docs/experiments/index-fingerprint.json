@@ -1,0 +1,21 @@
+{
+  "count": 11143,
+  "model": "Xenova/multilingual-e5-small",
+  "modelVersion": "3.8.1",
+  "dim": 384,
+  "backend": "lancedb",
+  "dbPath": "data/index/lancedb",
+  "manifestPath": "data/index/manifest.json",
+  "manifestHash": "ac94fcb8975d667db0018caa552468f97caff502ea45cc079e015bf502ba9d15",
+  "pipelineRev": "unknown",
+  "docTypes": {
+    "knowledge": 94,
+    "standard": 57,
+    "literature": 142,
+    "literature-full": 9753,
+    "table": 1041,
+    "enterprise": 56
+  },
+  "command": "pnpm exec tsx scripts/build-index.ts --check",
+  "generatedAt": "2026-11-25T12:14:16.935Z"
+}
