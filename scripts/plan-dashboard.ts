@@ -102,6 +102,26 @@ export function computeCriticalPath(tasks: Task[]): { path: string[]; days: numb
   return best;
 }
 
+/** 探测「进行中」：有 open PR 正文写了 Closes #N，即视为该 Issue 正在做。 */
+async function fetchDoingIssueNumbers(): Promise<Set<number>> {
+  const token = process.env.GH_TOKEN;
+  const doing = new Set<number>();
+  if (!token) return doing;
+  try {
+    const res = await fetch('https://api.github.com/repos/2019wakeup/AI_RAG/pulls?state=open&per_page=100', {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'plan-dashboard' },
+    });
+    if (!res.ok) return doing;
+    const list = (await res.json()) as Array<{ number: number; body?: string | null }>;
+    for (const pr of list) {
+      for (const m of (pr.body ?? '').matchAll(/[Cc]loses\s+#(\d+)/g)) doing.add(Number(m[1]));
+    }
+  } catch {
+    // 网络失败时保持空集：看板退化为「已完成/待办」两态
+  }
+  return doing;
+}
+
 async function fetchIssues(): Promise<Map<string, IssueInfo>> {
   const token = process.env.GH_TOKEN;
   const map = new Map<string, IssueInfo>();
@@ -137,15 +157,24 @@ export function buildHtml(data: {
   wave: Map<string, number>;
   critical: { path: string[]; days: number };
   issues: Map<string, IssueInfo>;
+  doing: Set<number>;
 }): string {
-  const { tasks, wave, critical, issues } = data;
+  const { tasks, wave, critical, issues, doing } = data;
   const levels = Math.max(...[...wave.values()]) + 1;
-  const done = tasks.filter((t) => issues.get(t.id)?.state === 'closed').length;
+  const statusOf = (t: Task): 'done' | 'doing' | 'todo' => {
+    const issue = issues.get(t.id);
+    if (issue?.state === 'closed') return 'done';
+    if (issue && doing.has(issue.number)) return 'doing';
+    return 'todo';
+  };
+  const done = tasks.filter((t) => statusOf(t) === 'done').length;
+  const doingCount = tasks.filter((t) => statusOf(t) === 'doing').length;
+  const todo = tasks.length - done - doingCount;
   const pct = Math.round((done / tasks.length) * 100);
 
   const cards = tasks.map((t) => {
     const issue = issues.get(t.id);
-    const state = issue?.state ?? 'open';
+    const status = statusOf(t);
     const isCritical = critical.path.includes(t.id);
     const blocked = t.labels.includes('blocked');
     return {
@@ -158,7 +187,7 @@ export function buildHtml(data: {
       deps: t.deps,
       size: sizeOf(t.labels),
       blocked,
-      state,
+      status,
       issue: issue?.number ?? null,
       url: issue?.url ?? null,
       critical: isCritical,
@@ -172,7 +201,7 @@ export function buildHtml(data: {
     levels,
     critical: critical.path,
     criticalDays: critical.days,
-    progress: { done, total: tasks.length, pct },
+    progress: { done, doing: doingCount, todo, total: tasks.length, pct },
     generatedAt: new Date().toISOString(),
   };
 
@@ -198,9 +227,16 @@ main{padding:20px 24px 60px}
 .col h3{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:600}
 .card{background:#0d1424;border:1px solid var(--line);border-left:3px solid #3b4a6b;border-radius:10px;padding:8px 10px;margin-bottom:8px;cursor:pointer;transition:transform .08s ease}
 .card:hover{transform:translateY(-1px);border-color:var(--accent)}
-.card.done{border-left-color:var(--ok);opacity:.72}
-.card.crit{border-left-color:var(--crit)}
+.card.st-done{background:#0d1f16;border-color:#1f6f3a;border-left-color:var(--ok)}
+.card.st-done .t{text-decoration:line-through;text-decoration-color:#3f7a55;color:#a9c7b4}
+.card.st-done::after{content:"✅";position:absolute;right:8px;top:6px;font-size:12px}
+.card.st-doing{background:#0e1830;border-color:#2f5cc4;border-left-color:var(--accent);box-shadow:0 0 0 1px #2f5cc4 inset}
+.card{position:relative}
+.card.crit:not(.st-done){border-left-color:var(--crit)}
 .card.blocked{outline:1px dashed var(--warn)}
+.c-done{color:#56d364}.c-doing{color:#79c0ff}.c-todo{color:var(--muted)}
+.tabs .sep{width:1px;background:var(--line);margin:0 6px}
+.hide-done .card.st-done{display:none}
 .card .t{font-size:12.5px;font-weight:600;margin:2px 0 4px}
 .card .m{font-size:11px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap}
 .tag{border:1px solid var(--line);border-radius:99px;padding:0 6px;font-size:10.5px}
@@ -218,7 +254,7 @@ a{color:var(--accent)} .hidden{display:none}
     <div class="sub">数据：<a href="./task-topology.md">docs/plan/task-topology.md</a> / <a href="./tasks.json">tasks.json</a> ｜ 生成于 ${escapeHtml(payload.generatedAt)}</div>
   </div>
   <div style="min-width:260px;flex:1">
-    <div class="sub" style="margin-bottom:6px">进度 <b id="pct">${pct}%</b>（<span id="done">${done}</span>/${tasks.length} 个任务关闭）</div>
+    <div class="sub" style="margin-bottom:6px">进度 <b id="pct">${pct}%</b>（<span class="c-done">✅ 已完成 ${done}</span> · <span class="c-doing">🔧 进行中 ${doingCount}</span> · <span class="c-todo">⬜ 待办 ${todo}</span> / 共 ${tasks.length}）</div>
     <div class="bar"><i></i></div>
   </div>
   <div class="sub">关键路径 <b>${critical.days}</b> 人日 ｜ 波次 <b>${levels}</b> 层</div>
@@ -227,6 +263,9 @@ a{color:var(--accent)} .hidden{display:none}
   <button class="on" data-view="wave">按波次（拓扑）</button>
   <button data-view="owner">按成员</button>
   <button data-view="graph">依赖图</button>
+  <span class="sep"></span>
+  <button class="on" id="filter-all">全部</button>
+  <button id="filter-open">只看未完成</button>
   <a href="${payload.repo}/issues" style="margin-left:auto;align-self:center;font-size:12px">GitHub Issues ↗</a>
 </div>
 <main>
@@ -241,10 +280,13 @@ const DATA = ${JSON.stringify(payload)};
 const byId = Object.fromEntries(DATA.tasks.map(t => [t.id, t]));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function card(t){
-  const cls = ['card', t.state==='closed'?'done':'', t.critical?'crit':'', t.blocked?'blocked':''].join(' ');
+  const cls = ['card', 'st-'+t.status, t.critical?'crit':'', t.blocked?'blocked':''].join(' ');
+  const badge = t.status==='done' ? '<span class="tag c-done">✅ 已完成</span>'
+              : t.status==='doing' ? '<span class="tag c-doing">🔧 进行中</span>'
+              : '<span class="tag c-todo">待办</span>';
   const link = t.url ? \`<a href="\${t.url}" target="_blank" rel="noopener">#\${t.issue}</a>\` : '<span style="color:#667">未建 Issue</span>';
   return \`<div class="\${cls}" title="\${esc(t.deps.length?('依赖：'+t.deps.join(', ')):'无依赖')}">
-    <div class="m"><span class="owner">\${t.owner}</span><span class="tag">\${t.size}</span><span class="tag">\${esc(t.milestone)}</span>\${t.blocked?'<span class="tag" style="color:var(--warn)">blocked</span>':''}</div>
+    <div class="m"><span class="owner">\${t.owner}</span><span class="tag">\${t.size}</span><span class="tag">\${esc(t.milestone)}</span>\${badge}\${t.blocked?'<span class="tag" style="color:var(--warn)">blocked</span>':''}</div>
     <div class="t">\${esc(t.id)} · \${esc(t.title)}</div>
     <div class="m"><span>\${esc(t.role)}</span><span>\${link}</span>\${t.critical?'<span class="tag" style="color:var(--crit)">关键路径</span>':''}</div>
   </div>\`;
@@ -255,7 +297,8 @@ function renderWave(){
   for(let w=0; w<=maxWave; w++){
     const col=document.createElement('div'); col.className='col';
     const items=DATA.tasks.filter(t=>t.wave===w);
-    col.innerHTML=\`<h3>Wave \${w} · \${items.length} 项</h3>\` + items.map(card).join('');
+    const d=items.filter(t=>t.status==='done').length;
+    col.innerHTML=\`<h3>Wave \${w} · 完成 \${d}/\${items.length}</h3>\` + items.map(card).join('');
     el.appendChild(col);
   }
 }
@@ -264,7 +307,8 @@ function renderOwner(){
   for(const o of DATA.owners){
     const col=document.createElement('div'); col.className='col';
     const items=DATA.tasks.filter(t=>t.owner===o.owner).sort((a,b)=>a.wave-b.wave);
-    col.innerHTML=\`<h3>\${o.owner} · \${esc(o.role)}（\${items.length}）</h3>\` + items.map(card).join('');
+    const d=items.filter(t=>t.status==='done').length;
+    col.innerHTML=\`<h3>\${o.owner} · \${esc(o.role)} · 完成 \${d}/\${items.length}</h3>\` + items.map(card).join('');
     el.appendChild(col);
   }
 }
@@ -302,6 +346,13 @@ document.querySelectorAll('.tabs button').forEach(b=>{
     if(b.dataset.view==='graph') renderGraph();
   };
 });
+function setFilter(openOnly){
+  document.body.classList.toggle('hide-done', openOnly);
+  document.getElementById('filter-all').classList.toggle('on', !openOnly);
+  document.getElementById('filter-open').classList.toggle('on', openOnly);
+}
+document.getElementById('filter-all').onclick=()=>setFilter(false);
+document.getElementById('filter-open').onclick=()=>setFilter(true);
 renderWave(); renderOwner();
 </script>
 </body>
@@ -320,6 +371,7 @@ async function main(): Promise<void> {
     console.warn('拉取 Issue 状态失败（网络/令牌），回退到本地 issue-map.json：', (err as Error).message);
   }
   if (issues.size === 0) issues = readIssueMapFile();
+  const doing = await fetchDoingIssueNumbers();
   if (issues.size > 0) {
     const rows = tasks.map((t) => {
       const i = issues.get(t.id);
@@ -327,13 +379,17 @@ async function main(): Promise<void> {
     });
     writeFileSync(join(planDir, 'issue-map.json'), `${JSON.stringify(rows, null, 2)}\n`);
   }
-  const html = buildHtml({ tasks, wave, critical, issues });
+  const html = buildHtml({ tasks, wave, critical, issues, doing });
   writeFileSync(join(planDir, 'dashboard.html'), html);
 
   const payload = {
     generatedAt: new Date().toISOString(),
     progress: {
       done: tasks.filter((t) => issues.get(t.id)?.state === 'closed').length,
+      doing: tasks.filter((t) => {
+        const i = issues.get(t.id);
+        return i && i.state !== 'closed' && doing.has(i.number);
+      }).length,
       total: tasks.length,
     },
     criticalPath: critical.path,
