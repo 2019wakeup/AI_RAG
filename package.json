@@ -12,7 +12,8 @@
     "build:index": "tsx scripts/build-index.ts",
     "eval:golden": "tsx scripts/golden-eval.ts lancedb",
     "eval:corpus": "tsx scripts/validate-corpus.ts",
-    "e2e": "tsx scripts/e2e-cases.ts && tsx scripts/e2e-degradation.ts"
+    "e2e": "tsx scripts/e2e-cases.ts && tsx scripts/e2e-degradation.ts",
+    "plan:board": "tsx scripts/plan-dashboard.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
