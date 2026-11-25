@@ -17,28 +17,29 @@ Unit & integration    pnpm test                   # 334 passed / 3 skipped 基�
 
 | 项 | 设置 |
 |---|---|
-| 必须走 PR | 是（`required_pull_request_reviews` 已启用，要求 ≥ 1 个 approve） |
-| 必需状态检查 | `verify`（严格模式：分支需先与 `main` 同步） |
-| 管理员豁免 | 是（`enforce_admins: false`，便于 A 作为唯一合入人执行 squash merge） |
+| 必须走 PR | 是（`required_pull_request_reviews`：≥ 1 个 approve） |
+| 必需状态检查 | `verify`（严格模式：分支需先与 `main` 同步后才可合并） |
+| 管理员豁免 | 是（`enforce_admins: false`）——A 是唯一合入人，仓库目前只有 1 个账号，无法自审自批，故合并时以管理员身份执行；**团队账号到位后应关闭豁免** |
 | 强制推送 / 删除分支 | 禁止 |
+| 生效时间 | 2026-11-25（T01 PR #29 合并后由 A 通过 API 设置） |
 
-复跑命令：
+复跑命令（把 `$GH_TOKEN` 换成自己的 PAT）：
 
 ```bash
-GH_TOKEN=*** gh api repos/2019wakeup/AI_RAG/branches/main/protection
+curl -s -H "Authorization: Bearer $GH_TOKEN" \
+  https://api.github.com/repos/2019wakeup/AI_RAG/branches/main/protection
 ```
 
 ## 3. 耗时记录（同一 workflow，冷 vs 热）
 
-| 运行 | 触发 | 用时 | 说明 |
-|---|---|---|---|
-| 冷启动 | T01 PR 首次 push | 见下方「实测」 | 无 pnpm store 命中，需下载全部依赖 |
-| 热启动 | T01 PR 第二次 push | 见下方「实测」 | pnpm store 命中（`cache: pnpm`） |
+| 运行 | 触发 | 用时 | 安装阶段 | 说明 |
+|---|---|---|---|---|
+| 冷（无缓存） | main `57d73cd` push | **88 s** | 5.6 s | 首次跑通（checkout/setup-node 冷缓存） |
+| 热（缓存命中 307 MB） | PR #29 `4b80e01` | **90 s** | 2.6 s | 日志 `Cache restored from key: node-cache-Linux-x64-pnpm-…`，命中后不再保存 |
+| 对照（main） | `18c7f3b` / `639cec3` | 83 s / 77 s | — | 同 workflow，波动 < 15 s |
 
-> 实测（GitHub Actions API `run.started_at` → `updated_at`）：
-> - 冷：`__COLD__`
-> - 热：`__WARM__`
-> 两者均 **< 6 min**，满足验收线。
+> 结论：冷/热均 **< 2 min**，距验收线 6 min 有 4 倍余量；耗时主要在 `pnpm test`（约 40–50 s），不是安装。
+> 取证来源：`GET /repos/2019wakeup/AI_RAG/actions/runs/{id}` 的 `run_started_at → updated_at`，以及 job 日志的 `Done in X s` / `Cache restored` 行。
 
 ## 4. lint 决策：**暂不引入 eslint**
 
@@ -63,3 +64,14 @@ pnpm -r typecheck && pnpm test     # 期望 334 passed / 3 skipped
 # 2) 检查必需检查项（PR 页面应显示 verify 通过）
 gh api repos/2019wakeup/AI_RAG/branches/main/protection/required_status_checks
 ```
+
+
+## 7. 本次 PR 的取证清单（T01，PR #29）
+
+| 证据 | 位置 |
+|---|---|
+| PR 上 `verify` 全绿 | Actions run `45604328378`（`feat/T01-ci-gate`，90 s，conclusion=success） |
+| 本地基线 | `pnpm -r typecheck` 五包 Done；`pnpm test` 334 passed / 3 skipped（T02 起随任务递增，见各 PR） |
+| 分支保护（合并后设置） | `GET /branches/main/protection` |
+| PR 模板渲染 | PR 正文含「变更范围 / 验收自检 / 课程要求影响 / 回滚方式」四段 |
+| CODEOWNERS | `.github/CODEOWNERS`（占位 `@OWNER-A…F`，待真实账号替换） |
