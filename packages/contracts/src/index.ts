@@ -1,4 +1,4 @@
-export { SCHEMA_VERSION } from './schemas';
+export { SCHEMA_VERSION, DOC_TYPES, PROVENANCE_FIELDS } from './schemas';
 export {
   DocTypeSchema,
   DistressSchema,
@@ -81,4 +81,5 @@ export type {
 } from './schemas';
 export { FIELD_REGISTRY } from './registry';
 export type { ControlType, FieldDef, FieldOption } from './registry';
-export { toJsonSchema } from './json-schema';
+export { toJsonSchema, componentJsonSchemas } from './json-schema';
+export { OPENAPI_COMPONENTS, OPENAPI_COMPONENT_NAMES } from './openapi-components';

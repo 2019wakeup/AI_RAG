@@ -1,4 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import {
+  DOC_TYPES,
+  PROVENANCE_FIELDS,
+  ProvenanceSchema,
+  DocTypeSchema,
+  OPENAPI_COMPONENTS,
+  OPENAPI_COMPONENT_NAMES,
+  componentJsonSchemas,
+} from '../src/index';
 import type { z } from 'zod';
 import {
   SCHEMA_VERSION,
@@ -280,5 +289,59 @@ describe('contracts 契约包', () => {
     expect(parsed.llmStatus).toBe('degraded');
     expect(parsed.adapterMode).toEqual({ a: 'mock', c: 'mock' });
     expect((parsed as unknown as Record<string, unknown>).futureField).toBe('x');
+  });
+});
+
+
+describe('T02 契约治理基线（provenance / docType / 组件导出）', () => {
+  it('PROVENANCE_FIELDS 为七项且与 ProvenanceSchema 的必填键一一对应', () => {
+    expect(PROVENANCE_FIELDS).toHaveLength(7);
+    const shape = Object.keys(ProvenanceSchema.shape).sort();
+    expect([...PROVENANCE_FIELDS].sort()).toEqual(shape);
+  });
+
+  it('DOC_TYPES 为六类且与 DocTypeSchema 的枚举值一一对应', () => {
+    expect(DOC_TYPES).toHaveLength(6);
+    expect([...DOC_TYPES].sort()).toEqual([...DocTypeSchema.options].sort());
+  });
+
+  it('SearchHit 与 EvidenceRef 同构：同一 schema 对象（chunkId 即证据 id）', () => {
+    expect(EvidenceRefSchema).toBe(SearchHitSchema);
+  });
+
+  it('SearchHit 在 CorpusChunk 基础上仅新增 score，且 text 为原文片段字段', () => {
+    const shape = Object.keys(SearchHitSchema.shape);
+    expect(shape).toContain('text');
+    expect(shape).toContain('chunkId');
+    expect(shape).toContain('provenance');
+    expect(shape).toContain('score');
+  });
+
+  it('OPENAPI_COMPONENTS 至少登记 8 个对外响应体，且名字唯一', () => {
+    const names = OPENAPI_COMPONENT_NAMES;
+    expect(names.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) {
+      expect(typeof OPENAPI_COMPONENTS[name]?.safeParse).toBe('function');
+    }
+  });
+
+  it('componentJsonSchemas 与 OPENAPI_COMPONENT_NAMES 键集合一致', () => {
+    expect(Object.keys(componentJsonSchemas()).sort()).toEqual([...OPENAPI_COMPONENT_NAMES].sort());
+  });
+
+  it('每个组件 JSON Schema 带 draft-07 $schema 与 object 类型', () => {
+    for (const [name, schema] of Object.entries(componentJsonSchemas()) as Array<[string, Record<string, unknown>]>) {
+      expect(schema.$schema, `${name} 缺少 $schema`).toBe('http://json-schema.org/draft-07/schema#');
+      expect(schema.type, `${name} 非 object`).toBe('object');
+    }
+  });
+
+  it('组件导出是确定性的（两次调用深相等）', () => {
+    expect(componentJsonSchemas()).toEqual(componentJsonSchemas());
+  });
+
+  it('组件名暂不含 QA 契约（留给 T07 单独登记，避免两处重复注册）', () => {
+    expect(OPENAPI_COMPONENT_NAMES.some((n) => n.startsWith('Qa'))).toBe(false);
   });
 });
