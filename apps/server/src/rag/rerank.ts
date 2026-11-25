@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { SearchHit } from '@ai-rag/contracts';
 import { callLlmText, readPrompt } from '../llm/client';
+import { getNumber } from '../config';
 import type { LlmCall } from '../llm/client';
 
 /**
@@ -36,7 +37,7 @@ const RerankResponseSchema = z
 
 const MAX_REASON_CHARS = 20;
 const HIT_TEXT_CHARS = 100; // 每 hit 节选 100 字符（控输入长度）
-const DEFAULT_RERANK_TIMEOUT_MS = 8000; // 真实 LLM 实测 4.4s，8s 超时留余量并保留回退
+// 超时来自集中配置 config/params.json（retrieval.rerankTimeoutMs，env RERANK_TIMEOUT_MS 优先）
 
 /** RERANK=off 强制关闭；默认 llm（未配置 key/LLM_OFF 时自动 off；注入 fake 视为可用） */
 export function rerankEnabled(llm?: LlmCall): boolean {
@@ -72,7 +73,7 @@ export async function rerankHits(
   const raw = await callLlmText(buildPrompt(perCandidate), {
     temperature: 0,
     llm,
-    timeoutMs: opts.timeoutMs ?? DEFAULT_RERANK_TIMEOUT_MS,
+    timeoutMs: opts.timeoutMs ?? getNumber('retrieval.rerankTimeoutMs'),
   });
   if (raw === null) return originalOrder(perCandidate);
   try {

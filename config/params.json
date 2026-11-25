@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "params": {
+    "retrieval.rrfK": { "default": 60, "range": [1, 200], "env": "RRF_K", "owner": "A", "desc": "RRF 融合常数 k；越大越平滑、越小越偏向头部" },
+    "retrieval.hybridWeights": { "default": "1,1", "range": null, "env": "HYBRID_WEIGHTS", "owner": "A", "desc": "RRF 两路权重（bm25,vec）；0,1=纯向量，1,0=纯关键词" },
+    "retrieval.candidateTopK": { "default": 20, "range": [1, 100], "env": "CANDIDATE_TOP_K", "owner": "A", "desc": "检索候选池大小（重排/证据挑选的输入）" },
+    "retrieval.rerankTopK": { "default": 6, "range": [1, 50], "env": "RERANK_TOP_K", "owner": "A", "desc": "每个查询保留给重排的命中条数" },
+    "retrieval.rerankTimeoutMs": { "default": 8000, "range": [500, 60000], "env": "RERANK_TIMEOUT_MS", "owner": "A", "desc": "LLM 批量重排超时；超时回退 RRF 原序" },
+    "retrieval.mmrEnabled": { "default": false, "range": null, "env": "MMR", "owner": "A", "desc": "是否启用 MMR 多样性选择（默认关闭，数据驱动结论）" },
+    "retrieval.mmrLambda": { "default": 0.7, "range": [0, 1], "env": "MMR_LAMBDA", "owner": "A", "desc": "MMR 相关性/多样性权衡 λ" },
+    "retrieval.mmrPool": { "default": 6, "range": [1, 50], "env": "MMR_POOL", "owner": "A", "desc": "MMR 候选池大小（默认=重排 top-K）" },
+    "evidence.perCandidate": { "default": 3, "range": [1, 10], "env": "EVIDENCE_PER_CANDIDATE", "owner": "A", "desc": "每个推荐候选配几条证据" },
+    "evidence.globalReuseCap": { "default": 3, "range": [1, 20], "env": "EVIDENCE_REUSE_CAP", "owner": "A", "desc": "同一知识块在所有候选中的最大复用次数" },
+    "evidence.quota.knowledge": { "default": 2, "range": [0, 10], "env": null, "owner": "A", "desc": "证据配额：知识条目" },
+    "evidence.quota.standard": { "default": 1, "range": [0, 10], "env": null, "owner": "A", "desc": "证据配额：规范条文" },
+    "evidence.quota.table": { "default": 1, "range": [0, 10], "env": null, "owner": "A", "desc": "证据配额：定量表格" },
+    "evidence.quota.literature": { "default": 2, "range": [0, 10], "env": null, "owner": "A", "desc": "证据配额：文献题录/全文章节" },
+    "evidence.quota.enterprise": { "default": 1, "range": [0, 10], "env": null, "owner": "A", "desc": "证据配额：企业资料" },
+    "qa.minHits": { "default": 3, "range": [1, 50], "env": "QA_MIN_HITS", "owner": "C", "desc": "拒答判据①：检索命中数下限（低于即拒答 no_hit）" },
+    "qa.minScore": { "default": 0.35, "range": [0, 1], "env": "QA_MIN_SCORE", "owner": "C", "desc": "拒答判据②：最高原始相似度下限（低于即 low_relevance）" },
+    "qa.minCoverage": { "default": 0.5, "range": [0, 1], "env": "QA_MIN_COVERAGE", "owner": "C", "desc": "拒答判据③：证据覆盖问题要素的比例下限" },
+    "qa.topK": { "default": 8, "range": [1, 20], "env": "QA_TOP_K", "owner": "B", "desc": "问答检索返回的候选条数" },
+    "qa.maxAnswerChars": { "default": 1200, "range": [100, 5000], "env": "QA_MAX_ANSWER_CHARS", "owner": "B", "desc": "答案长度上限（超出截断并标注）" },
+    "sort.penaltyBudgetPerWan": { "default": 0.02, "range": [0, 0.5], "env": null, "owner": "A", "desc": "推荐排序：预算每超 1 万元的扣分" },
+    "sort.penaltySchedulePerDay": { "default": 0.01, "range": [0, 0.5], "env": null, "owner": "A", "desc": "推荐排序：工期每超 1 天的扣分" }
+  }
+}
