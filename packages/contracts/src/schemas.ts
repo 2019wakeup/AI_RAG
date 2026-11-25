@@ -530,5 +530,89 @@ export const QaResponseSchema = z
       .passthrough()
       .optional(),
   })
-  .passthrough();
+  .passthrough()
+  .superRefine((v, ctx) => {
+    // 断言级约束：拒答必须说明原因，否则前端无法区分「拒答」与「空答案」
+    if (v.refused && !v.refusalReason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['refusalReason'],
+        message: 'refused=true 时必须提供 refusalReason',
+      });
+    }
+  });
 export type QaResponse = z.infer<typeof QaResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// QA 接缝契约（T07）：B（问答链路）与 C（可信拒答）之间唯一的数据接口。
+//   C 产出 RefusalDecision / NeedInfoSlot[] → B 在编排里组装成 QaResponse。
+//   双方都不改对方文件，改这里要同时评审。
+// ---------------------------------------------------------------------------
+
+/** 拒答置信度三档（用于前端呈现「为什么拒」的强弱） */
+export const RefusalConfidenceSchema = z.enum(['high', 'medium', 'low']);
+export type RefusalConfidence = z.infer<typeof RefusalConfidenceSchema>;
+
+/** 拒答判定结果（C 的纯函数 `decideRefusal()` 返回值） */
+export const RefusalDecisionSchema = z
+  .object({
+    refused: z.boolean(),
+    reason: QaRefusalReasonSchema.optional(),
+    confidence: RefusalConfidenceSchema,
+    /** 可选：本次判定考虑到的关键指标（命中数/最高原始相似度/覆盖率），便于回放与调参 */
+    signals: z
+      .object({
+        hitCount: z.number().optional(),
+        topScore: z.number().optional(),
+        coverage: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
+  .superRefine((v, ctx) => {
+    if (v.refused && !v.reason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'refused=true 时必须提供 reason',
+      });
+    }
+  });
+export type RefusalDecision = z.infer<typeof RefusalDecisionSchema>;
+
+/** 缺失槽位（C 的 `collectNeedInfo()` 返回项） */
+export const NeedInfoSlotSchema = z
+  .object({
+    key: z.string(),
+    label: z.string(),
+    example: z.string().optional(),
+  })
+  .passthrough();
+export type NeedInfoSlot = z.infer<typeof NeedInfoSlotSchema>;
+
+/**
+ * NeedInfoSlot[] → QaResponse.needInfo(string[]) 的投影。
+ * `needInfo` 保持 `string[]`（字段只增不改），结构化信息只存在于接缝 schema。
+ * 投影必须确定性可复现（同一输入永远同一输出，测试会断言）。
+ */
+export function needInfoFromSlots(slots: readonly NeedInfoSlot[]): string[] {
+  return slots.map((s) => (s.example ? `${s.label}（例如：${s.example}）` : s.label));
+}
+
+/**
+ * 校验 `citations[].n`：必须从 1 起、连续、无重复。
+ * B（生成侧）与 D（前端角标）共用，避免「[3] 指向不存在的证据」。
+ */
+export function validateCitationNumbering(
+  citations: readonly { n: number }[],
+): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const seen = new Set<number>();
+  citations.forEach((c, i) => {
+    if (seen.has(c.n)) errors.push(`citation n=${c.n} 重复`);
+    seen.add(c.n);
+    if (c.n !== i + 1) errors.push(`第 ${i + 1} 条 citation 的 n 应为 ${i + 1}，实际 ${c.n}`);
+  });
+  return { ok: errors.length === 0, errors };
+}
