@@ -11,6 +11,7 @@ import { registerFeedback } from './routes/feedback';
 import { registerChat } from './routes/chat';
 import { registerKb } from './routes/kb';
 import { registerQa } from './routes/qa';
+import { OPENAPI_COMPONENTS } from '@ai-rag/contracts';
 
 export interface AppDeps {
   store: VectorStore;
@@ -37,6 +38,11 @@ export function createApp(deps: AppDeps): OpenAPIHono {
   registerChat(app, deps);
   registerKb(app, deps);
   registerQa(app, deps);
+  // 对外响应体组件：与 packages/contracts 的 OPENAPI_COMPONENTS 保持同源，
+  // /openapi 的 components.schemas 由此生成（T02；QA 组件在 T07 追加）。
+  for (const [name, schema] of Object.entries(OPENAPI_COMPONENTS)) {
+    app.openAPIRegistry.register(name, schema);
+  }
   app.doc('/openapi', {
     openapi: '3.1.0',
     info: { title: '沥知问答 · 领域知识库问答 API', version: '1.0.0' },

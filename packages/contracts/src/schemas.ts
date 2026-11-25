@@ -19,6 +19,20 @@ export const DocTypeSchema = z.enum([
 ]);
 export type DocType = z.infer<typeof DocTypeSchema>;
 
+/**
+ * 语料类型登记（与 DocTypeSchema 一一对应，供测试与文档引用）。
+ * 注意「原文性」分档：standard / literature-full / table 为原文摘录；
+ * literature 为纯题录；knowledge / enterprise 为二次加工的条目文本。
+ */
+export const DOC_TYPES = [
+  'knowledge',
+  'standard',
+  'literature',
+  'enterprise',
+  'table',
+  'literature-full',
+] as const satisfies readonly DocType[];
+
 // ---------------------------------------------------------------------------
 // 场景输入（模块 A 入参 / 主流程第一步）
 // ---------------------------------------------------------------------------
@@ -207,6 +221,21 @@ export const ProvenanceSchema = z
   .passthrough();
 export type Provenance = z.infer<typeof ProvenanceSchema>;
 
+/**
+ * provenance 七字段登记（与 ProvenanceSchema 一一对应）。
+ * 作用：任何一条证据都能回答「来自哪篇文档、内容指纹是什么、由哪个模型/版本/维度嵌入、
+ * 哪次流水线构建、何时嵌入」——这是「可溯源」与「索引换模型必须全量重建」的契约基础。
+ */
+export const PROVENANCE_FIELDS = [
+  'sourceDocId',
+  'contentHash',
+  'embeddingModel',
+  'modelVersion',
+  'dim',
+  'pipelineRev',
+  'embeddedAt',
+] as const satisfies readonly (keyof Provenance)[];
+
 export const CorpusChunkSchema = z
   .object({
     schemaVersion: schemaVersionField(),
@@ -224,7 +253,11 @@ export const SearchHitSchema = CorpusChunkSchema.extend({
 }).passthrough();
 export type SearchHit = z.infer<typeof SearchHitSchema>;
 
-/** 证据引用与检索命中同构（chunkId 即证据 id）。 */
+/**
+ * 证据引用与检索命中**同构**：同一个 schema 对象（`EvidenceRefSchema === SearchHitSchema`），
+ * `chunkId` 即证据 id，`text` 即原文片段。报告里的 `evidenceIds`、问答里的 `citations[].chunkId`
+ * 都指向它——前端因此可以复用同一套证据面板渲染，不需要为「引用」再造一套类型。
+ */
 export const EvidenceRefSchema = SearchHitSchema;
 export type EvidenceRef = SearchHit;
 
