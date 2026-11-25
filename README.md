@@ -128,7 +128,8 @@ sequenceDiagram
 node -v && pnpm -v
 
 # 1) 安装依赖（仓库根目录）
-pnpm install
+#    ONNXRUNTIME_NODE_INSTALL_CUDA=skip 跳过 onnxruntime 的 CUDA 下载（无 GPU 机器必加，否则 postinstall 404）
+ONNXRUNTIME_NODE_INSTALL_CUDA=skip pnpm install
 
 # 2) 配置环境变量（演示端口 3011 / 5175；无可用 LLM 时改 LLM_OFF=1）
 cp .env.example .env

@@ -27,6 +27,10 @@ jobs:
           cache: pnpm
 
       - name: Install
+        # onnxruntime-node 的 postinstall 默认尝试下载 CUDA GPU 运行时（CI 无 GPU 且该版本资源 404），
+        # 本项目只用 CPU 推理，用环境变量跳过——注意 .npmrc 里的同名配置在 pnpm 12 下不保证透传给 postinstall。
+        env:
+          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck（全仓）
