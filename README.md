@@ -319,6 +319,8 @@ E2E_BASE_URL=http://127.0.0.1:3011 pnpm e2e
 | [任务拓扑](docs/plan/task-topology.md) | 里程碑与 T 编号任务、依赖、写域 |
 | [团队分工](docs/团队分工.md) | A–F 成员模块与验收 |
 | [团队手册](docs/团队手册.md) | **新人先读**：跑起来 / 你的任务 / 一个 PR 怎么走完 / 八条硬规矩 |
+| [任务看板](docs/plan/dashboard.html) | 按 Wave 拓扑排序的看板 + 依赖图（`pnpm plan:board` 重新生成） |
+| [团队上手 Prompt](docs/团队上手Prompt.md) | 复制给成员 AI 的上手提示词 |
 | [贡献指南](CONTRIBUTING.md) | 认领 Issue、分支/PR 规范、自检清单、合入规则 |
 | [data/corpus/README.md](data/corpus/README.md) | 语料目录结构与文件格式 |
 | [NOTICE.md](NOTICE.md) / [LICENSE](LICENSE) | 许可、版权与免责 |
