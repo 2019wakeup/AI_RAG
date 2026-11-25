@@ -1,6 +1,13 @@
 import type { ZodTypeAny } from 'zod';
 import {
   CandidateSchema,
+  NeedInfoSlotSchema,
+  QaCitationSchema,
+  QaRefusalReasonSchema,
+  QaRequestSchema,
+  QaResponseSchema,
+  QaStatusSchema,
+  RefusalDecisionSchema,
   CaseSeedSchema,
   CorpusChunkSchema,
   EvidenceRefSchema,
@@ -34,3 +41,20 @@ export const OPENAPI_COMPONENTS: Record<string, ZodTypeAny> = {
 
 /** 组件名清单（顺序稳定，供测试与文档生成复用）。 */
 export const OPENAPI_COMPONENT_NAMES = Object.keys(OPENAPI_COMPONENTS);
+
+
+/**
+ * QA 接缝组件（T07）：5 个 M0 契约 + 2 个 B/C 接缝 schema。
+ * 与 `OPENAPI_COMPONENTS` 分开登记，便于 T07 独立断言与后续演进。
+ */
+export const OPENAPI_QA_COMPONENTS: Record<string, ZodTypeAny> = {
+  QaRequest: QaRequestSchema,
+  QaCitation: QaCitationSchema,
+  QaResponse: QaResponseSchema,
+  QaRefusalReason: QaRefusalReasonSchema,
+  QaStatus: QaStatusSchema,
+  RefusalDecision: RefusalDecisionSchema,
+  NeedInfoSlot: NeedInfoSlotSchema,
+};
+
+export const OPENAPI_QA_COMPONENT_NAMES = Object.keys(OPENAPI_QA_COMPONENTS);

@@ -38,6 +38,11 @@ export {
   QaStatusSchema,
   QaRefusalReasonSchema,
   QaResponseSchema,
+  RefusalConfidenceSchema,
+  RefusalDecisionSchema,
+  NeedInfoSlotSchema,
+  needInfoFromSlots,
+  validateCitationNumbering,
 } from './schemas';
 export type {
   DocType,
@@ -78,8 +83,16 @@ export type {
   QaStatus,
   QaRefusalReason,
   QaResponse,
+  RefusalConfidence,
+  RefusalDecision,
+  NeedInfoSlot,
 } from './schemas';
 export { FIELD_REGISTRY } from './registry';
 export type { ControlType, FieldDef, FieldOption } from './registry';
 export { toJsonSchema, componentJsonSchemas } from './json-schema';
-export { OPENAPI_COMPONENTS, OPENAPI_COMPONENT_NAMES } from './openapi-components';
+export {
+  OPENAPI_COMPONENTS,
+  OPENAPI_COMPONENT_NAMES,
+  OPENAPI_QA_COMPONENTS,
+  OPENAPI_QA_COMPONENT_NAMES,
+} from './openapi-components';
