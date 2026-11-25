@@ -184,20 +184,37 @@ export function resolveEmbeddingModel(
  * LanceDB 表维度必须与 embedder.dim 一致；embedder 失败时 dim=null → 默认 1024（纯 BM25 可用）。
  * lancedb 初始化失败自动降级 sqlite。
  */
+/**
+ * 索引产物路径的**唯一派生处**（T04）：服务端、评测脚本、构建脚本都用这一套名字，
+ * 避免再出现「服务端读 sqlite.db（空库）、评测脚本读 app.db」的双后端不一致。
+ */
+export function vectorStorePaths(indexDir: string): {
+  lancedb: string;
+  sqlite: string;
+  manifest: string;
+} {
+  return {
+    lancedb: join(indexDir, 'lancedb'),
+    sqlite: join(indexDir, 'app.db'),
+    manifest: join(indexDir, 'manifest.json'),
+  };
+}
+
 export function createVectorStore(opts: {
   backend: string;
   indexDir: string;
   dim: number | null;
 }): VectorStore {
+  const paths = vectorStorePaths(opts.indexDir);
   if (opts.backend === 'sqlite') {
-    return new SqliteVectorStore(join(opts.indexDir, 'sqlite.db'));
+    return new SqliteVectorStore(paths.sqlite);
   }
   try {
-    return new LanceDBVectorStore(join(opts.indexDir, 'lancedb'), {
+    return new LanceDBVectorStore(paths.lancedb, {
       dim: opts.dim ?? 1024,
     });
   } catch (err) {
     console.warn('LanceDB 初始化失败，自动降级 SQLite：', err);
-    return new SqliteVectorStore(join(opts.indexDir, 'sqlite.db'));
+    return new SqliteVectorStore(paths.sqlite);
   }
 }
