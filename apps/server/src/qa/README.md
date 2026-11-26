@@ -1,7 +1,7 @@
 # 问答模块边界（apps/server/src/qa/）
 
 > 本目录是课程设计**主线模块**：领域知识库问答（检索 → 证据选择 → 生成 → 引用绑定 → 拒答判定）。
-> 当前为骨架：契约与路由已就位，编排逻辑由 M1/M2 里程碑的 PR 逐步补齐。
+> 当前实现进度：T08 检索 / T09 生成 / T10 流式已落地；拒答与追问由 C 的 T17/T18 提供、T19 接入。
 > **改动前先读 `docs/plan/task-topology.md` 的 §3 写域与冲突规则**（本文件的任务编号与该文件保持一致）。
 
 ## 1. 职责与归属
@@ -9,14 +9,14 @@
 | 文件（规划） | 职责 | 负责人 | 任务 |
 |---|---|---|---|
 | `retrieve.ts` | 问题 → 查询向量 → `VectorStore.search`，返回候选 chunk（含 `text` 与 `provenance`） | B | T08 |
-| `evidence-select.ts` | 证据选择与配额（知识/规范/文献/表格）、跨候选去重、相关性排序 | B | T08 |
+| `select.ts` | 证据选择：相关度主序、同篇文献取 1 条、`target = min(unique, maxCitations)` | B | T08 |
 | `generate.ts` | 构造 prompt（`prompts/qa.md`）→ 调 LLM → 解析 `[n]` 角标 → 回填 `QaCitation[]` | B | T09 |
 | `stream.ts` | SSE 流式（meta → delta → citation → done）与无 LLM 降级 | B | T10 |
 | `refusal.ts` | 拒答判据：命中数 / 原始相似度 / 覆盖率 / LLM `insufficient` → `refused + refusalReason` | C（判据 T17）→ B（接入 T19） | T17 / T19 |
 | `needinfo.ts` | 追问判定：识别缺失槽位（气候/交通/病害/层位…）→ `needInfo[]` | C | T18 |
-| `index.ts` | 编排：`answerQuestion(deps, req) → QaResponse`（供 `routes/qa.ts` 调用） | B | T08 / T09 |
+| `index.ts` | 编排：`answerQuestion(deps, req) → QaResponse`；`prepareEvidence` / `toResponse` 与流式共用 | B | T08–T10 |
 
-> 物理隔离：C **只写** `refusal.ts`、`needinfo.ts` 及自己的测试；B 只写 `retrieve.ts` / `evidence-select.ts` / `generate.ts` / `stream.ts` / `index.ts` / `routes/qa.ts`。两边唯一的缝是 `packages/contracts` 里的 `RefusalDecision` / `NeedInfoSlot`（T07，由 A 维护）。
+> 物理隔离：C **只写** `refusal.ts`、`needinfo.ts` 及自己的测试；B 只写 `retrieve.ts` / `select.ts` / `generate.ts` / `stream.ts` / `index.ts` / `routes/qa.ts`。两边唯一的缝是 `packages/contracts` 里的 `RefusalDecision` / `NeedInfoSlot`（T07，由 A 维护）。
 
 ## 2. 硬约束（评测会用）
 
@@ -26,12 +26,12 @@
 4. **拒答优先于编造**：`refused=true` 时 `answer` 必须为空字符串或仅含一句拒答说明，不得给出无证据结论。
 5. **可测**：每条判据都要有单测；拒答阈值必须来自 `config/params.json`（T03），不得硬编码在函数里。
 
-## 3. 当前骨架（M0 基线已交付）
+## 3. 当前实现（T08–T10）
 
-- `apps/server/src/routes/qa.ts`：`POST /api/v1/qa`，做请求校验（`QaRequestSchema`）后返回 **501 + `status:"not_implemented"`**，响应体符合 `QaResponse` 契约。
-- `apps/server/test/qa.test.ts`：2 个契约守卫用例（非法请求 400、骨架响应符合契约）。
+- `apps/server/src/routes/qa.ts`：`POST /api/v1/qa`（检索 → 生成 → 契约响应）与 `POST /api/v1/qa/stream`（SSE：`meta → delta → citation → done`）。
+- `apps/server/test/`：`qa.test.ts`（路由守卫）、`qa-retrieve.test.ts`（检索/证据）、`qa-generate.test.ts`（生成/降级）、`qa-stream.test.ts`（逐帧流式）。
 - `packages/contracts`：`QaRequest / QaCitation / QaResponse / QaStatus / QaRefusalReason`。
-- `prompts/qa.md`：答案生成 prompt（逐句 `[n]`、证据不足置 `insufficient`、缺信息写 `needInfo`）。
+- `prompts/qa.md`：答案生成 prompt（R1–R6；逐句 `[n]`、证据不足置 `insufficient`）。
 
 ## 4. 非目标（不要在本模块做）
 
