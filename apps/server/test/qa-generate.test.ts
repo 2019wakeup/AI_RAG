@@ -90,9 +90,7 @@ describe('T09·抽取式降级（验收③）', () => {
   });
 
   it('402 抛错时降级抽取式、不抛异常', async () => {
-    const llm: LlmCall = async () => {
-      throw new Error('402 Payment Required');
-    };
+    const llm: LlmCall = async () => { throw new Error('402 Payment Required'); };
     const r = await ask(llm);
     expect(r.llmUsed).toBe(false);
     expect(r.answer).toContain('[1]');

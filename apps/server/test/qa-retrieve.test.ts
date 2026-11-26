@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { QaResponseSchema } from '@ai-rag/contracts';
+import { QaResponseSchema, validateCitationNumbering } from '@ai-rag/contracts';
 import type { DocType, SearchHit } from '@ai-rag/contracts';
 import type { VectorSearchQuery, VectorStore } from '@ai-rag/retrieval';
 import { answerQuestion } from '../src/qa/index';
@@ -167,9 +167,10 @@ describe('T08·answerQuestion', () => {
     expect(res.citations.length).toBeGreaterThanOrEqual(QA_MIN_CITATIONS);
     expect(res.citations.length).toBeLessThanOrEqual(QA_MAX_CITATIONS);
 
+    // n 连续用契约自检，不另写一套断言
+    expect(validateCitationNumbering(res.citations)).toEqual({ ok: true, errors: [] });
     const origin = new Map(preset.map((h) => [h.chunkId, h]));
-    for (const [i, c] of res.citations.entries()) {
-      expect(c.n).toBe(i + 1);
+    for (const c of res.citations) {
       const src = origin.get(c.chunkId);
       expect(src).toBeDefined();
       expect(c.sourceDocId).toBe(src?.provenance.sourceDocId);

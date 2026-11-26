@@ -43,7 +43,7 @@ export interface GenerateResult {
 /** `[1]` / `[1,2]` / 全角 `［1］`「【1】」统一识别，逗号与顿号都可作分隔 */
 const CITATION_MARK = /[\[［【]\s*(\d{1,3}(?:\s*[,，、]\s*\d{1,3})*)\s*[\]］】]/g;
 
-/** 双向校验（验收①）：越界编号删角标留句子；`[1,2]` 拆成 `[1][2]`；`[1][1]` 只计一次；全角归一 */
+/** 双向校验的答案侧（citations 的 n 连续性交给契约 `validateCitationNumbering()`，不在此重写）：越界编号删角标留句子；`[1,2]` 拆成 `[1][2]`；`[1][1]` 只计一次；全角归一 */
 export function sanitizeCitationNumbers(
   answer: string,
   maxN: number,

@@ -19,7 +19,7 @@ export type QaDeps = QaRetrieveDeps & {
   llm?: LlmCall;
 };
 
-/** citation 的 n 由证据顺序（score 降序）决定：citations[n-1].n === n */
+/** citation 的 n 由证据顺序（score 降序）决定：n = i+1；连续性由契约 `validateCitationNumbering()` 自检 */
 function toCitations(hits: ReturnType<typeof selectEvidence>): QaCitation[] {
   return hits.map((h, i) => ({
     n: i + 1,
