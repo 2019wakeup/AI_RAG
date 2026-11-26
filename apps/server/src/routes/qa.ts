@@ -6,8 +6,8 @@ import { answerQuestion } from '../qa/index';
 /**
  * 领域知识库问答端点（课程设计主线）。
  *
- * 现状：检索 + 证据选择已实现（T08）；生成与 `[n]` 绑定见 T09，拒答/追问判定见 T17/T18（接入 T19），
- *       前端消费见 T12–T14。
+ * 现状：检索 + 证据选择（T08）、生成与 `[n]` 绑定（T09）已实现；流式端点见 T10，
+ *       拒答/追问判定见 T17/T18（接入 T19），前端消费见 T12–T14。
  *
  * 契约见 packages/contracts/src/schemas.ts 的 QaRequest / QaResponse：
  * - answer 中每个断言必须挂 [n] 角标，n → citations[].n
