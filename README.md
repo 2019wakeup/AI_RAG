@@ -9,7 +9,7 @@
 
 - 领域：**沥青路面养护材料**（规范条文 / 论文题录 / 论文全文 / 定量表格 / 材料知识条目 / 企业资料）
 - 技术栈：Vue 3 + Hono + SQLite FTS5 / LanceDB + transformers.js 本地嵌入 + 可选 LLM
-- 规模：语料 6 类、**11,143 块 / 395 文档**；检索金标准 38 条；单测 **441 passed / 3 skipped**
+- 规模：语料 6 类、**11,143 块 / 395 文档**；检索金标准 38 条；单测 **486 passed / 3 skipped**
 - 现状：检索、语料、证据结构与推荐下游应用**已具备**；**问答编排与可信拒答是本课程设计的核心待交付项**（见 [当前状态](#6-当前状态)）
 
 ---
@@ -251,18 +251,18 @@ E2E_BASE_URL=http://127.0.0.1:3011 pnpm e2e
 - **检索**：SQLite FTS5（trigram BM25）与 LanceDB 双引擎；BM25 + 向量余弦 → RRF(k=60)；`HYBRID_WEIGHTS` 可调；可选 LLM 重排（`RERANK=off` 可关）与 MMR。
 - **证据结构**：`SearchHit` 自带 `text`（原文片段）与 provenance；前端 `EvidencePanel.vue` 可展开原文——问答页可直接复用。
 - **检索评测**：38 条金标准 + 三方案对比；混合检索 mean recall@5 **0.9187**。
-- **问答链路（后端）**：`/api/v1/qa` 已打通 检索 → 证据选择（相关度主序、原文 snippet、3–8 条）→ 生成 → `[n]` 双向校验（越界剔除）；`/api/v1/qa/stream` 提供 SSE（`meta → delta → citation → done`）；无 LLM/402 时回落**抽取式答案**并标 `status:"degraded"`、流式仍发 done（T08–T10）。
-- **问答前端底座**：`apps/web/src/api/qa.ts`（类型化客户端 + 六类错误归一）与 `apps/web/src/stores/qa.ts`（idle→loading→done|error、partial 保留）已就绪（T12）。
+- **问答链路（后端）**：`/api/v1/qa` 已打通 检索 → 证据选择（相关度主序、原文 snippet、3–8 条）→ 生成 → `[n]` 双向校验（越界剔除）；`/api/v1/qa/stream` 提供 SSE（`meta → delta → citation → done`）；无 LLM/402 时回落**抽取式答案**并标 `status:"degraded"`、流式仍发 done（T08–T10）；**拒答判据核心（T17）**已就绪（`qa.refusal.ts`），待 T19 接入编排。
+- **问答前端**：`apps/web/src/api/qa.ts`（类型化客户端 + 六类错误归一）、`stores/qa.ts`（idle→loading→done|error、partial 保留）与 **问答页 `views/QaView.vue`**（空/加载/错误/答案四态 + 证据卡片 + `/qa` 路由与导航，T12/T13）已就绪。
 - **问答契约**：`QaRequest` / `QaResponse` / `QaCitation` / `QaRefusalReason` / `RefusalDecision` / `NeedInfoSlot` 已在 `packages/contracts` 定义（契约先行）。
 - **推荐下游应用**：5 案例端到端 + 确定性复跑 + 三档降级（LLM/A/C 适配器/LanceDB→SQLite）。
-- **工程质量**：`pnpm typecheck` + `pnpm test`（**441 passed / 3 skipped**）+ GitHub Actions CI。
+- **工程质量**：`pnpm typecheck` + `pnpm test`（**486 passed / 3 skipped**）+ GitHub Actions CI。
 
 ### 🚧 待实现（课程设计核心，按 [任务拓扑](docs/plan/task-topology.md) 推进）
 
 | 待实现项 | 落点 | 负责人 |
 |---|---|---|
-| 可信拒答与追问策略（无命中/低相关/域外/证据不足/生成不可用） | `apps/server/src/qa/{refusal,clarify}.ts` | C |
-| 前端问答页：答案 + 角标定位原文 + 拒答/追问空态 + 品牌替换（客户端/状态层已完成） | `apps/web/src/views/QaView.vue` 等 | D |
+| 追问 needInfo 与拒答接入编排（判据核心 T17 已完成；remain T18 追问 + T19 接入） | `apps/server/src/qa/{needinfo,index}.ts` | C / B |
+| 角标定位原文 + 拒答/追问 UI（页面与证据卡片已完成，T14/T21 收口） | `apps/web/src/components/{CitationBadge,RefusalNotice,NeedInfoForm}.vue` | D |
 | QA 金标集（含负样本）与 `qa-eval` 评测 | `data/golden/qa.json`、`scripts/qa-eval.ts` | E / F |
 | 三方案对比的显式开关（`--vector` / `--rerank`）与结果落盘 | `scripts/golden-eval.ts`、`docs/experiments/` | F |
 | 语料治理：域外表格剔除、<30 字碎块过滤 | `data/corpus/`、`scripts/validate-corpus.ts` | E |
