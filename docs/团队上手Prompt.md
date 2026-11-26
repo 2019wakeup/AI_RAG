@@ -38,7 +38,7 @@ node -v        # 必须 >= 24（SQLite 降级后端用 node:sqlite）
 pnpm -v        # 必须 12.x；没有就 corepack enable && corepack prepare pnpm@12.11.2 --activate
 ONNXRUNTIME_NODE_INSTALL_CUDA=skip pnpm install   # 必须带该环境变量，否则 onnxruntime 下载 CUDA 包会 404
 pnpm -r typecheck                                  # 期望 5 个 workspace 全 Done
-pnpm test                                          # 期望 441 passed / 3 skipped（基线，只许增不许减）
+pnpm test                                          # 期望 486 passed / 3 skipped（基线，只许增不许减）
 
 # 只有需要跑服务/前端/评测时才需要索引（仓库不含索引，首次约 729s）：
 HF_ENDPOINT=https://hf-mirror.com EMBEDDING_MODEL=multilingual-e5-small \
@@ -74,7 +74,7 @@ config/params.json、.github/**、data/index/**。
 
 ## 六、硬规矩（违反会被打回）
 1. 只改自己写域，越界先登记；
-2. 测试只增不减（当前基线 441 passed），typecheck 必须全过；
+2. 测试只增不减（当前基线 486 passed），typecheck 必须全过；
 3. 数字唯一口径：索引 11,143 块、检索金标 38 条（dev 28 + held-out 10）、混合 mean recall@5 = 0.9187；
    禁止「241 块」「11,087 当唯一值」「金标准 20 条」「38/38 = 100%」；
 4. LLM 不可用（HTTP 402）时必须降级，实验结论写 llm: null，禁止用 0 分冒充；
