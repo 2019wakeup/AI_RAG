@@ -109,6 +109,26 @@ describe('T08·select', () => {
     expect(chosen.length).toBeLessThanOrEqual(QA_MAX_CITATIONS);
   });
 
+  // review 回归：主排序必须是相关度，docType 优先序不得把最高分挤掉
+  it('最高分命中必须排在 citations[0]（不被 docType 优先序挤掉）', () => {
+    expect(selectEvidence(mixedHits(10))[0].score).toBeCloseTo(0.95, 5); // knowledge 类型的最高分
+  });
+
+  it('命中充足时取满 maxCitations（不再被核心槽位锁死在 3 条）', () => {
+    expect(selectEvidence(mixedHits(10), { maxCitations: 8 })).toHaveLength(8);
+    expect(selectEvidence(mixedHits(10), { maxCitations: 5 })).toHaveLength(5);
+  });
+
+  it('同一篇文献多章节不霸屏：其他文献的命中仍能进入 citations', () => {
+    const hits = [
+      ...[0, 1, 2].map((i) => mkHit({ docType: 'literature-full', docId: 'paper-A', score: 0.9 - i * 0.01 })),
+      mkHit({ docType: 'standard', docId: 'std-B', score: 0.5 }),
+    ];
+    const chosen = selectEvidence(hits, { maxCitations: 3 });
+    expect(chosen).toHaveLength(3);
+    expect(chosen.some((h) => h.provenance.sourceDocId === 'std-B')).toBe(true);
+  });
+
   it('命中不足下限时不虚增；空输入返回空数组', () => {
     expect(selectEvidence([mkHit({ docType: 'knowledge', docId: 'k1' }), mkHit({ docType: 'standard', docId: 'k2' })])).toHaveLength(2);
     expect(selectEvidence([])).toEqual([]);

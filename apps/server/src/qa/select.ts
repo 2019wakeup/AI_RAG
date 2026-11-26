@@ -1,16 +1,10 @@
 import type { SearchHit } from '@ai-rag/contracts';
-import { selectCandidateHits } from '../orchestrator';
 
 /**
- * 问答证据选择（T08）。
- *
- * 不能直接套用 `selectCandidateHits()`：那是**按推荐候选**设计的（单候选上限 `EVIDENCE_SLOTS=3`、
- * 同一 `sourceDocId` 只留 1 条、跨候选复用计数），而问答是单问题场景，验收要求 citations 3–8 条，
- * 且同一篇文献的不同章节可能都是有效证据。
- *
- * 因此分两层：① 配额优先——直接调用 `selectCandidateHits()` 取「配额内的核心证据」（不复制配额规则）；
- * ② 相关度补齐——核心不足下限时按 score 降序补齐，只按 `chunkId` 去重，不引入新配额。
- * 最终统一按 score 降序，为 `citations[n-1].n === n` 铺好顺序。
+ * 问答证据选择（T08，按 review 修订）：主排序是**相关度**。
+ * 不套 `selectCandidateHits()`——它按「题录→表格→章节→其余」优先序取且封顶 `EVIDENCE_SLOTS=3`，
+ * 会把最高分的知识/规范原文挤掉、也让 `maxCitations` 失效。这里只保留它同款的「同篇文献取 1 条」
+ * 去重，且去重只影响优先权（取不满 target 时按分数续排）。`evidence.quota.*` 属推荐域口径，问答不启用。
  */
 
 /** 验收区间：citations 3–8 条 */
@@ -32,21 +26,18 @@ export function selectEvidence(hits: SearchHit[], opts: SelectEvidenceOptions = 
     unique.push(h);
   }
   if (unique.length === 0) return [];
+
   const max = Math.max(1, Math.min(opts.maxCitations ?? QA_MAX_CITATIONS, QA_MAX_CITATIONS));
-  const min = Math.min(QA_MIN_CITATIONS, max);
-
-  // ① 配额内的核心证据（传独立计数容器，不污染调用方）
-  const chosen = selectCandidateHits(unique, new Map<string, number>(), new Set<string>());
-  const picked = new Set(chosen.map((h) => h.chunkId));
-  const target = Math.min(unique.length, max, Math.max(chosen.length, min));
-
-  // ② 不足下限则按相关度补齐
-  for (const h of [...unique].sort((a, b) => b.score - a.score)) {
-    if (chosen.length >= target) break;
-    if (picked.has(h.chunkId)) continue;
-    chosen.push(h);
-    picked.add(h.chunkId);
+  const ranked = [...unique].sort((a, b) => b.score - a.score);
+  // 同一篇文献只取 1 条（排名靠前者胜出）；其余按分数续排，保证取满且 n=1 是全场最高分
+  const head: SearchHit[] = [];
+  const docs = new Set<string>();
+  for (const h of ranked) {
+    if (docs.has(h.provenance.sourceDocId)) continue;
+    docs.add(h.provenance.sourceDocId);
+    head.push(h);
   }
-  // 统一按相关度降序：n=1 是最相关证据
-  return chosen.sort((a, b) => b.score - a.score).slice(0, target);
+  const tail = ranked.filter((h) => !head.includes(h));
+  const target = Math.min(unique.length, max);
+  return [...head, ...tail].slice(0, target).sort((a, b) => b.score - a.score);
 }
