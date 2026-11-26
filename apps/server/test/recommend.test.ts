@@ -152,8 +152,10 @@ describe('T8 orchestrator + /api/v1 路由', () => {
     const deps = { store, embedder: fakeEmbedder, relationDb };
     const r1 = await recommend(loadCaseScene('case-01'), deps);
     const r2 = await recommend(loadCaseScene('case-01'), deps);
-    const { steps: _s1, ...rest1 } = r1;
-    const { steps: _s2, ...rest2 } = r2;
+    // 剔除所有计时字段：steps（六步耗时）与 evidenceRerankMs（LLM 重排耗时）按定义每次都可能不同，
+    // 不属于「确定性数值」范畴；曾经漏掉 evidenceRerankMs 导致 CI 偶发红（0ms vs 2ms）。
+    const { steps: _s1, evidenceRerankMs: _m1, ...rest1 } = r1;
+    const { steps: _s2, evidenceRerankMs: _m2, ...rest2 } = r2;
     expect(rest1).toEqual(rest2);
   });
 
