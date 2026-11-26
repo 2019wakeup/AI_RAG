@@ -1,12 +1,13 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { QaRequestSchema } from '@ai-rag/contracts';
 import type { AppDeps } from '../app';
+import { answerQuestion } from '../qa/index';
 
 /**
  * 领域知识库问答端点（课程设计主线）。
  *
- * 现状：**骨架**。T02/T03（B）实现检索→证据选择→生成→引用绑定；
- *       T04/T05（C）实现拒答与追问判定；T06/T07（D）实现前端消费。
+ * 现状：检索 + 证据选择已实现（T08）；生成与 `[n]` 绑定见 T09，拒答/追问判定见 T17/T18（接入 T19），
+ *       前端消费见 T12–T14。
  *
  * 契约见 packages/contracts/src/schemas.ts 的 QaRequest / QaResponse：
  * - answer 中每个断言必须挂 [n] 角标，n → citations[].n
@@ -17,16 +18,7 @@ export function registerQa(app: OpenAPIHono, deps: AppDeps): void {
   app.post('/api/v1/qa', async (c) => {
     const parsed = QaRequestSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return c.json({ error: '问答请求不合法' }, 400);
-    void deps;
-    const notImplemented = {
-      schemaVersion: '1',
-      question: parsed.data.question,
-      answer: '',
-      citations: [],
-      refused: false,
-      needInfo: [],
-      status: 'not_implemented',
-    };
-    return c.json(notImplemented, 501);
+    const response = await answerQuestion(deps, parsed.data);
+    return c.json(response, 200);
   });
 }

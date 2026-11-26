@@ -15,8 +15,8 @@ const fakeEmbedder: EmbedderLike = {
   embed: async (texts: string[]) => texts.map(() => [0, 0]),
 };
 
-/** 问答端点契约守卫：M1 里程碑（T02/T03）实现后，本文件应扩展为真实问答用例。 */
-describe('T02 问答端点（骨架）', () => {
+/** 问答端点契约守卫（T08 起为真实检索链路；更细的检索/证据用例见 qa-retrieve.test.ts）。 */
+describe('T08 问答端点（检索链路）', () => {
   function makeApp() {
     const dir = mkdtempSync(join(tmpdir(), 'qa-'));
     const relationDb = initRelationDb(join(dir, 'relation.db'));
@@ -51,7 +51,7 @@ describe('T02 问答端点（骨架）', () => {
     }
   });
 
-  it('骨架阶段返回 501 且响应体符合 QaResponse 契约', async () => {
+  it('空库返回 200 且响应体符合 QaResponse 契约（citations 为空、status=degraded，不 5xx）', async () => {
     const { app, cleanup } = makeApp();
     try {
       const res = await app.request('/api/v1/qa', {
@@ -59,14 +59,16 @@ describe('T02 问答端点（骨架）', () => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ question: 'SBS 改性沥青适用于什么场景？', topK: 5 }),
       });
-      expect(res.status).toBe(501);
+      expect(res.status).toBe(200);
       const body = await res.json();
       const parsed = QaResponseSchema.safeParse(body);
       expect(parsed.success).toBe(true);
       if (parsed.success) {
-        expect(parsed.data.status).toBe('not_implemented');
+        expect(parsed.data.status).toBe('degraded');
         expect(parsed.data.citations).toEqual([]);
         expect(parsed.data.refused).toBe(false);
+        expect(parsed.data.answer).toBe('');
+        expect(parsed.data.trace?.hitCount).toBe(0);
       }
     } finally {
       cleanup();
