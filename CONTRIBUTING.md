@@ -30,7 +30,7 @@ git switch -c feat/T09-qa-generate      # 类型/T<编号>-短描述
 
 - PR 标题：`[T09] 生成与引用绑定`（**任务 ID 必填**），正文写 `Closes #<issue>`；
 - **单 PR ≤ 400 行 diff**（不含锁文件/生成数据）；超出请拆；
-- 必过 CI：`pnpm install` + `pnpm -r typecheck` + `pnpm test`（基线 **430 passed / 3 skipped**，只增不减）；
+- 必过 CI：`pnpm install` + `pnpm -r typecheck` + `pnpm test`（基线 **441 passed / 3 skipped**，只增不减）；
 - **至少 1 名 reviewer**；共享文件（`packages/contracts/src/schemas.ts`、`apps/server/src/app.ts`、`apps/web/src/router.ts`、根 `package.json`、`config/params.json`、`.github/**`）必须由 A 评审，且 A 是唯一合入人；
 - 涉及检索/生成/拒答/语料的改动，必须附 `docs/experiments/*.json`（含生成命令）；
 - 新增/变更的命令、参数、数字，同步更新对应文档；**禁止出现旧口径**（`11,087` 当唯一值、`金标准 20 条`、`38/38 = 100%`、`241 块`）。
