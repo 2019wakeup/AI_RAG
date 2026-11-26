@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   buildFingerprint,
   evaluateIndexCheck,
@@ -23,8 +23,9 @@ describe('T04 build-index --check', () => {
   it('解析 --check 选项：默认后端/模型/指纹路径，--fingerprint 可覆盖', () => {
     const a = resolveCheckOptions(['--check'], {}, { indexDir: '/tmp/idx', repoRoot: '/repo' });
     expect(a.backend).toBe('lancedb');
-    expect(a.manifestPath).toBe('/tmp/idx/manifest.json');
-    expect(a.fingerprintPath).toBe('/repo/docs/experiments/index-fingerprint.json');
+    // 用 path.join/resolve 构造期望值：Windows 下实现会规范化为反斜杠/带盘符，字面量断言会误报
+    expect(a.manifestPath).toBe(join('/tmp/idx', 'manifest.json'));
+    expect(a.fingerprintPath).toBe(join('/repo', 'docs/experiments/index-fingerprint.json'));
     expect(a.writeFingerprint).toBe(true);
 
     const b = resolveCheckOptions(
@@ -33,7 +34,7 @@ describe('T04 build-index --check', () => {
       { indexDir: '/tmp/idx', repoRoot: '/repo' },
     );
     expect(b.backend).toBe('sqlite');
-    expect(b.fingerprintPath).toBe('/tmp/fp.json');
+    expect(b.fingerprintPath).toBe(resolve('/tmp/fp.json'));
     expect(b.writeFingerprint).toBe(false);
   });
 
