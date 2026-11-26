@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { QaResponseSchema } from '@ai-rag/contracts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { QaResponseSchema, validateCitationNumbering } from '@ai-rag/contracts';
 import type { DocType, SearchHit } from '@ai-rag/contracts';
 import type { VectorSearchQuery, VectorStore } from '@ai-rag/retrieval';
 import { answerQuestion } from '../src/qa/index';
@@ -50,6 +50,13 @@ function makeStore(preset: SearchHit[]): { store: VectorStore; calls: VectorSear
 }
 
 const embedder: QaEmbedder = { embed: async (texts) => texts.map(() => [0.1, 0.2, 0.3]) };
+
+// T09 起 answerQuestion 会调用生成：显式关掉 LLM，保证用例走确定性的抽取式降级
+beforeEach(() => {
+  vi.stubEnv('DEEPSEEK_API_KEY', '');
+  vi.stubEnv('LLM_OFF', '1');
+});
+afterEach(() => vi.unstubAllEnvs());
 
 /** 多类型命中（知识 / 规范 / 表格 / 文献全文 / 题录混合） */
 function mixedHits(count = 10): SearchHit[] {
@@ -155,13 +162,15 @@ describe('T08·answerQuestion', () => {
     const res = await answerQuestion({ store, embedder }, { question: 'SBS 改性沥青软化点要求' });
 
     expect(QaResponseSchema.safeParse(res).success).toBe(true);
-    expect(res.status).toBe('ok');
+    // 无 LLM key（beforeEach 已关）：答案走抽取式降级，因此是 degraded 而不是 ok
+    expect(res.status).toBe('degraded');
     expect(res.citations.length).toBeGreaterThanOrEqual(QA_MIN_CITATIONS);
     expect(res.citations.length).toBeLessThanOrEqual(QA_MAX_CITATIONS);
 
+    // n 连续用契约自检，不另写一套断言
+    expect(validateCitationNumbering(res.citations)).toEqual({ ok: true, errors: [] });
     const origin = new Map(preset.map((h) => [h.chunkId, h]));
-    for (const [i, c] of res.citations.entries()) {
-      expect(c.n).toBe(i + 1);
+    for (const c of res.citations) {
       const src = origin.get(c.chunkId);
       expect(src).toBeDefined();
       expect(c.sourceDocId).toBe(src?.provenance.sourceDocId);
@@ -178,11 +187,14 @@ describe('T08·answerQuestion', () => {
     expect(res.trace?.vectorUsed).toBe(true);
   });
 
-  it('本阶段 answer 为空、不冒充拒答（拒答由 T19 接入）', async () => {
+  it('无 LLM：给抽取式答案（非空、每个主题段带 [n]）且不冒充拒答（拒答由 T19 接入）', async () => {
     const { store } = makeStore(mixedHits());
     const res = await answerQuestion({ store, embedder }, { question: '软化点' });
 
-    expect(res.answer).toBe('');
+    expect(res.answer.length).toBeGreaterThan(0);
+    expect(res.answer).toMatch(/\[\d+\]/);
+    expect(res.trace?.generateMs).toBeGreaterThanOrEqual(0);
+    expect(res.trace?.llmUsed).toBe(false);
     expect(res.refused).toBe(false);
     expect(res.refusalReason).toBeUndefined();
     expect(res.needInfo).toEqual([]);
