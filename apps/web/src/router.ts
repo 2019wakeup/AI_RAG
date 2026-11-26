@@ -10,6 +10,11 @@ export const router = createRouter({
       component: () => import('./views/WelcomeView.vue'),
     },
     {
+      path: '/qa',
+      name: 'qa',
+      component: () => import('./views/QaView.vue'),
+    },
+    {
       path: '/recommend',
       name: 'recommend',
       component: () => import('./views/RecommendView.vue'),
