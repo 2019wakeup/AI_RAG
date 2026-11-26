@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SqliteVectorStore } from '@ai-rag/retrieval';
+import type { VectorStore } from '@ai-rag/retrieval';
 import { createVectorStore, resolveEmbeddingModel } from '../src/config';
 
 describe('EMBEDDING_MODEL 启动参数解析', () => {
@@ -26,8 +27,12 @@ describe('EMBEDDING_MODEL 启动参数解析', () => {
 
 describe('createVectorStore（R3-C2：先 embedder 后 store，dim 对齐）', () => {
   let dir: string;
+  let store: VectorStore | undefined;
 
   afterEach(() => {
+    // Windows：LanceDB/SQLite 句柄未关闭时删除临时目录会 EPERM，先 close 再删
+    (store as { close?: () => void } | undefined)?.close?.();
+    store = undefined;
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
 
@@ -36,17 +41,17 @@ describe('createVectorStore（R3-C2：先 embedder 后 store，dim 对齐）', (
   });
 
   it('lancedb：store 构造器收到的 dim == embedder.dim', () => {
-    const store = createVectorStore({ backend: 'lancedb', indexDir: dir, dim: 384 });
+    store = createVectorStore({ backend: 'lancedb', indexDir: dir, dim: 384 });
     expect((store as unknown as { dim: number }).dim).toBe(384);
   });
 
   it('lancedb：embedder 失败（dim null）→ 默认 dim 1024', () => {
-    const store = createVectorStore({ backend: 'lancedb', indexDir: dir, dim: null });
+    store = createVectorStore({ backend: 'lancedb', indexDir: dir, dim: null });
     expect((store as unknown as { dim: number }).dim).toBe(1024);
   });
 
   it('sqlite 后端 → SqliteVectorStore（不受 dim 影响）', () => {
-    const store = createVectorStore({ backend: 'sqlite', indexDir: dir, dim: 384 });
+    store = createVectorStore({ backend: 'sqlite', indexDir: dir, dim: 384 });
     expect(store).toBeInstanceOf(SqliteVectorStore);
   });
 });
