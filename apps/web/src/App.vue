@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const navItems = [
   { path: '/', label: '首页' },
+  { path: '/qa', label: '智能问答' },
   { path: '/recommend', label: '推荐工作台' },
   { path: '/cases', label: '典型案例' },
   { path: '/knowledge', label: '知识库管理' },
@@ -71,6 +72,20 @@ onMounted(() => {
           >
             <path d="M3 11l9-8 9 8" />
             <path d="M5 9.5V21h14V9.5" />
+          </svg>
+          <svg
+            v-else-if="item.path === '/qa'"
+            class="app-menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <path d="M8 8.5h8" />
+            <path d="M8 12h5" />
           </svg>
           <svg
             v-else-if="item.path === '/recommend'"
