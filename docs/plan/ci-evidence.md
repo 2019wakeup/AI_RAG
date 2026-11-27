@@ -8,7 +8,7 @@
 ```yaml
 Install               ONNXRUNTIME_NODE_INSTALL_CUDA=skip pnpm install --frozen-lockfile
 Typecheck（全仓）      pnpm -r typecheck          # contracts/retrieval/embedding/server/web 五包
-Unit & integration    pnpm test                   # 486 passed / 3 skipped 基线
+Unit & integration    pnpm test                   # 508 passed / 3 skipped 基线
 ```
 
 不放进 CI 的：索引构建（约 729 s）、检索金标准（需嵌入模型）、e2e、faithfulness（需 LLM）——命令集中在 [`docs/复现指南.md`](../../docs/复现指南.md)。
@@ -59,7 +59,7 @@ curl -s -H "Authorization: Bearer $GH_TOKEN" \
 
 ```bash
 # 1) 检查本地基线（与 CI 同口径）
-pnpm -r typecheck && pnpm test     # 期望 486 passed / 3 skipped
+pnpm -r typecheck && pnpm test     # 期望 508 passed / 3 skipped
 
 # 2) 检查必需检查项（PR 页面应显示 verify 通过）
 gh api repos/2019wakeup/AI_RAG/branches/main/protection/required_status_checks
@@ -71,7 +71,7 @@ gh api repos/2019wakeup/AI_RAG/branches/main/protection/required_status_checks
 | 证据 | 位置 |
 |---|---|
 | PR 上 `verify` 全绿 | Actions run `45604328378`（`feat/T01-ci-gate`，90 s，conclusion=success） |
-| 本地基线 | `pnpm -r typecheck` 五包 Done；`pnpm test` 486 passed / 3 skipped（T02 起随任务递增，见各 PR） |
+| 本地基线 | `pnpm -r typecheck` 五包 Done；`pnpm test` 508 passed / 3 skipped（T02 起随任务递增，见各 PR） |
 | 分支保护（合并后设置） | `GET /branches/main/protection` |
 | PR 模板渲染 | PR 正文含「变更范围 / 验收自检 / 课程要求影响 / 回滚方式」四段 |
 | CODEOWNERS | `.github/CODEOWNERS`（占位 `@OWNER-A…F`，待真实账号替换） |

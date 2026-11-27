@@ -13,10 +13,10 @@
 | `generate.ts` | 构造 prompt（`prompts/qa.md`）→ 调 LLM → 解析 `[n]` 角标 → 回填 `QaCitation[]` | B | T09 |
 | `stream.ts` | SSE 流式（meta → delta → citation → done）与无 LLM 降级 | B | T10 |
 | `refusal.ts` | 拒答判据：命中数 / 原始相似度 / 覆盖率 / LLM `insufficient` → `refused + refusalReason` | C（判据 T17）→ B（接入 T19） | T17 / T19 |
-| `needinfo.ts` | 追问判定：识别缺失槽位（气候/交通/病害/层位…）→ `needInfo[]` | C | T18 |
+| `clarify.ts` | 追问判定：识别缺失槽位（气候/交通/病害/层位…）→ `collectNeedInfo() → needInfo[]` | C | T18 |
 | `index.ts` | 编排：`answerQuestion(deps, req) → QaResponse`；`prepareEvidence` / `toResponse` 与流式共用 | B | T08–T10 |
 
-> 物理隔离：C **只写** `refusal.ts`、`needinfo.ts` 及自己的测试；B 只写 `retrieve.ts` / `select.ts` / `generate.ts` / `stream.ts` / `index.ts` / `routes/qa.ts`。两边唯一的缝是 `packages/contracts` 里的 `RefusalDecision` / `NeedInfoSlot`（T07，由 A 维护）。
+> 物理隔离：C **只写** `refusal.ts`、`clarify.ts` 及自己的测试；B 只写 `retrieve.ts` / `select.ts` / `generate.ts` / `stream.ts` / `index.ts` / `routes/qa.ts`。两边唯一的缝是 `packages/contracts` 里的 `RefusalDecision` / `NeedInfoSlot`（T07，由 A 维护）。
 
 ## 2. 硬约束（评测会用）
 

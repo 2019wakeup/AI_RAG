@@ -52,7 +52,7 @@ $
 （输出）
 ```
 
-**数字口径**（`docs/plan/task-topology.md` §0.4：11,143 块 / 38 条金标准（dev 28 + held-out 10） / mean recall@5 0.9187 / 486 passed）
+**数字口径**（`docs/plan/task-topology.md` §0.4：11,014 块（lancedb + e5-small 384 维，T15 清洗后） / 38 条金标准（dev 28 + held-out 10） / mean recall@5 0.9187 / **508 passed**）
 
 - [ ] 本 PR 涉及的数字与 §0.4 一致；未引入 `11,087`、`金标准 20 条`、`38/38（100%）` 等旧口径
 - [ ] 若本次改动了语料或索引：已由 A 按 T04 流程重建索引，并更新 `docs/experiments/index-fingerprint.json`（贴出新旧 `manifestHash` 与混合检索复跑结果；**索引产物不入库**）
