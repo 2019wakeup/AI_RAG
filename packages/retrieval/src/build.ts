@@ -174,10 +174,11 @@ function collectPlanned(corpusDir: string): PlannedChunk[] {
   // 4. 文献全文（litfull-<题录序号>.md：按 ## 标题切块，无标题长节按 ~500 字聚合）
   const litFullDir = path.join(corpusDir, 'literature-full');
   if (fs.existsSync(litFullDir)) {
+    const minChars = readMinChunkChars(corpusDir);
     for (const f of fs.readdirSync(litFullDir).filter((x) => x.endsWith('.md')).sort()) {
       const docId = f.replace(/\.md$/, '');
       const content = fs.readFileSync(path.join(litFullDir, f), 'utf-8');
-      planned.push(...chunkLiteratureFull(docId, content));
+      planned.push(...chunkLiteratureFull(docId, content, minChars));
     }
   }
 
@@ -274,7 +275,27 @@ function mapTableTags(text: string): string[] {
 const LITFULL_CHUNK_TARGET = 500;
 const LITFULL_CHUNK_MAX = 600;
 
-function chunkLiteratureFull(docId: string, content: string): PlannedChunk[] {
+/**
+ * 碎块下限（T15）：低于该长度的块丢弃。默认 10 保持既有行为；
+ * 语料根目录存在 `cleaning-rules.json` 时读其 `minChunkChars`（本仓库取 30），
+ * 使「过滤 <30 字碎块」成为可复跑的数据规则而不是散落的魔法数字。
+ */
+const LITFULL_MIN_CHARS_DEFAULT = 10;
+
+function readMinChunkChars(corpusDir: string): number {
+  const rulesFile = path.join(corpusDir, 'cleaning-rules.json');
+  if (!fs.existsSync(rulesFile)) return LITFULL_MIN_CHARS_DEFAULT;
+  try {
+    const raw = JSON.parse(fs.readFileSync(rulesFile, 'utf-8')) as { minChunkChars?: unknown };
+    const v = raw.minChunkChars;
+    // 非法值不阻塞入库：退回默认阈值（语料校验器会把非法规则当错误报出）
+    return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : LITFULL_MIN_CHARS_DEFAULT;
+  } catch {
+    return LITFULL_MIN_CHARS_DEFAULT;
+  }
+}
+
+function chunkLiteratureFull(docId: string, content: string, minChars: number): PlannedChunk[] {
   const cleaned = content
     .split('\n')
     .filter((line) => !/^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(line)) // 图片引用行不入块
@@ -301,7 +322,7 @@ function chunkLiteratureFull(docId: string, content: string): PlannedChunk[] {
     const prefix = s.heading ? `${s.heading}\n` : '';
     for (const part of packParagraphs(s.body, LITFULL_CHUNK_TARGET, LITFULL_CHUNK_MAX)) {
       const text = (prefix + part).trim();
-      if (text.length < 10) continue;
+      if (text.length < minChars) continue;
       chunks.push(makeChunk(`${docId}:${idx++}`, docId, text, 'literature-full', []));
     }
   }
