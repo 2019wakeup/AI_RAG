@@ -38,7 +38,7 @@ node -v        # 必须 >= 24（SQLite 降级后端用 node:sqlite）
 pnpm -v        # 必须 12.x；没有就 corepack enable && corepack prepare pnpm@12.11.2 --activate
 ONNXRUNTIME_NODE_INSTALL_CUDA=skip pnpm install   # 必须带该环境变量，否则 onnxruntime 下载 CUDA 包会 404
 pnpm -r typecheck                                  # 期望 5 个 workspace 全 Done
-pnpm test                                          # 期望 486 passed / 3 skipped（基线，只许增不许减）
+pnpm test                                          # 期望 508 passed / 3 skipped（基线，只许增不许减）
 
 # 只有需要跑服务/前端/评测时才需要索引（仓库不含索引，首次约 729s）：
 HF_ENDPOINT=https://hf-mirror.com EMBEDDING_MODEL=multilingual-e5-small \
@@ -54,7 +54,7 @@ API_PROXY_TARGET=http://localhost:3011 pnpm -C apps/web run dev -- --port 5175 -
 Issue 正文顶部写有 负责人 / 依赖 / 规模；依赖未合入不要开工。看板上「🔧进行中」= 已有 open PR 写着 Closes #N。
 我的写域（只许改这些，路径均相对仓库根）：
 - B：apps/server/src/routes/qa.ts、apps/server/src/qa/{retrieve,evidence-select,generate,stream,index}.ts、prompts/qa.md、对应测试
-- C：只写 apps/server/src/qa/{refusal,needinfo}.ts + scripts/refusal-eval.ts + 自己的测试
+- C：只写 apps/server/src/qa/{refusal,clarify}.ts + scripts/refusal-eval.ts + 自己的测试
 - D：apps/web/src/views/QaView.vue、apps/web/src/components/{CitationBadge,QaAnswer,RefusalNotice,NeedInfoForm}.vue、apps/web/src/api/qa.ts、apps/web/src/stores/qa.ts
 - E：data/corpus/**、data/golden/{qa.json,splits.json}、scripts/{validate-corpus,chunk-quality-report}.ts
 - F：scripts/{golden-eval,qa-eval,ablation-*}.ts、docs/experiments/**
@@ -74,8 +74,8 @@ config/params.json、.github/**、data/index/**。
 
 ## 六、硬规矩（违反会被打回）
 1. 只改自己写域，越界先登记；
-2. 测试只增不减（当前基线 486 passed），typecheck 必须全过；
-3. 数字唯一口径：索引 11,143 块、检索金标 38 条（dev 28 + held-out 10）、混合 mean recall@5 = 0.9187；
+2. 测试只增不减（当前基线 508 passed），typecheck 必须全过；
+3. 数字唯一口径：索引 11,014 块、检索金标 38 条（dev 28 + held-out 10）、混合 mean recall@5 = 0.9187；
    禁止「241 块」「11,087 当唯一值」「金标准 20 条」「38/38 = 100%」；
 4. LLM 不可用（HTTP 402）时必须降级，实验结论写 llm: null，禁止用 0 分冒充；
 5. 涉检索/生成/拒答/语料改动必须附 docs/experiments/*.json（含生成命令）；
