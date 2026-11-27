@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "minChunkChars": 30,
+  "description": "域外语料剔除规则（T15）。excludedDocs 以 sourcePath 为唯一键：docTitle 可能是 PDF 文件名残留（如 sigir_main.dvi），不可作为判据。",
+  "excludedDocs": [
+    {
+      "sourcePath": "City_Contest/ref/070 XGBoost A Scalable Tree Boosting System.pdf",
+      "docTitle": "070 XGBoost A Scalable Tree Boosting System",
+      "category": "xgboost",
+      "reason": "XGBoost 梯度提升算法论文（Chen & Guestrin 2016），通用机器学习",
+      "tables": 4
+    },
+    {
+      "sourcePath": "City_Contest/ref/078 pymoo Multi-Objective Optimization in Python.pdf",
+      "docTitle": "pymoo: Multi-objective Optimization in Python",
+      "category": "generic_ml",
+      "reason": "pymoo 多目标优化 Python 库文档，非领域内容",
+      "tables": 3
+    },
+    {
+      "sourcePath": "City_Contest/ref/083 Parallel Bayesian Optimization of Multiple Noisy Objectives with Expected Hyperv.pdf",
+      "docTitle": "083 Parallel Bayesian Optimization of Multiple Noisy Objectives with Expected Hyperv",
+      "category": "generic_ml",
+      "reason": "多目标贝叶斯优化算法论文，通用优化方法",
+      "tables": 6
+    },
+    {
+      "sourcePath": "City_Contest/ref/084 Differentiable Expected Hypervolume Improvement for Parallel Multi-Objective Bay.pdf",
+      "docTitle": "084 Differentiable Expected Hypervolume Improvement for Parallel Multi-Objective Bay",
+      "category": "generic_ml",
+      "reason": "多目标贝叶斯优化算法论文，通用优化方法",
+      "tables": 5
+    },
+    {
+      "sourcePath": "City_Contest/ref/085 BoTorch A Framework for Efficient Monte-Carlo Bayesian Optimization.pdf",
+      "docTitle": "085 BoTorch A Framework for Efficient Monte-Carlo Bayesian Optimization",
+      "category": "generic_ml",
+      "reason": "BoTorch 蒙特卡洛贝叶斯优化框架文档，非领域内容",
+      "tables": 1
+    },
+    {
+      "sourcePath": "City_Contest/ref/092 Machine learning-based inverse design methods considering data characteristics a.pdf",
+      "docTitle": "092 Machine learning-based inverse design methods considering data characteristics a",
+      "category": "generic_ml",
+      "reason": "通用机器学习逆设计方法，非沥青领域",
+      "tables": 1
+    },
+    {
+      "sourcePath": "City_Contest/ref/117 Dense Passage Retrieval for Open-Domain Question Answering.pdf",
+      "docTitle": "117 Dense Passage Retrieval for Open-Domain Question Answering",
+      "category": "dpr",
+      "reason": "DPR 开放域问答检索论文（Karpukhin 2020），信息检索方法类",
+      "tables": 7
+    },
+    {
+      "sourcePath": "City_Contest/ref/118 ColBERT Efficient and Effective Passage Search via Contextualized Late Interacti.pdf",
+      "docTitle": "ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT",
+      "category": "colbert",
+      "reason": "ColBERT 段落检索论文，信息检索方法类",
+      "tables": 4
+    },
+    {
+      "sourcePath": "City_Contest/ref/120 Reciprocal rank fusion outperforms condorcet and individual rank learning method.pdf",
+      "docTitle": "sigir_main.dvi",
+      "category": "generic_ml",
+      "reason": "Reciprocal Rank Fusion 信息检索论文（题名 docTitle 为转换残留 sigir_main.dvi）",
+      "tables": 4
+    },
+    {
+      "sourcePath": "City_Contest/ref/121 A survey on large language model based autonomous agents.pdf",
+      "docTitle": "121 A survey on large language model based autonomous agents",
+      "category": "llm_agent",
+      "reason": "LLM 智能体综述（Wang 2024），非沥青材料",
+      "tables": 3
+    },
+    {
+      "sourcePath": "City_Contest/ref/130 Deep Learning Based Recommender System A Survey and New Perspectives.pdf",
+      "docTitle": "130 Deep Learning Based Recommender System A Survey and New Perspectives",
+      "category": "generic_ml",
+      "reason": "深度学习推荐系统综述，非沥青领域",
+      "tables": 4
+    },
+    {
+      "sourcePath": "City_Contest/ref/131 Neural Collaborative Filtering.pdf",
+      "docTitle": "131 Neural Collaborative Filtering",
+      "category": "generic_ml",
+      "reason": "神经协同过滤推荐算法论文，非沥青领域",
+      "tables": 4
+    },
+    {
+      "sourcePath": "reference/开源代码/Blank和Deb - 2020 - Pymoo Multi-Objective Optimization in Python.pdf",
+      "docTitle": "Pymoo: Multi-Objective Optimization in Python",
+      "category": "generic_ml",
+      "reason": "pymoo 多目标优化 Python 库文档，非领域内容",
+      "tables": 3
+    },
+    {
+      "sourcePath": "reference/开源代码/Chen和Guestrin - 2016 - XGBoost A Scalable Tree Boosting System.pdf",
+      "docTitle": "Chen和Guestrin - 2016 - XGBoost A Scalable Tree Boosting System",
+      "category": "xgboost",
+      "reason": "XGBoost 梯度提升算法论文（Chen & Guestrin 2016），通用机器学习",
+      "tables": 4
+    },
+    {
+      "sourcePath": "reference/评估方法/Deb 等 - 2002 - A fast and elitist multiobjective genetic algorithm NSGA-II.pdf",
+      "docTitle": "A fast and elitist multiobjective genetic algorithm: NSGA-II",
+      "category": "generic_ml",
+      "reason": "NSGA-II 多目标遗传算法论文（Deb 2002），通用优化方法",
+      "tables": 6
+    },
+    {
+      "sourcePath": "reference/评估方法/Zhu 等 - 2023 - Sample-efficient Multi-objective Molecular Optimization with GFlowNets.pdf",
+      "docTitle": "Zhu 等 - 2023 - Sample-efficient Multi-objective Molecular Optimization with GFlowNets",
+      "category": "generic_ml",
+      "reason": "分子生成多目标优化论文，与沥青材料无关",
+      "tables": 5
+    },
+    {
+      "sourcePath": "reference/推荐算法/Ji 等 - 2022 - A Survey on Knowledge Graphs Representation, Acquisition, and Applications.pdf",
+      "docTitle": "Ji 等 - 2022 - A Survey on Knowledge Graphs Representation, Acquisition, and Applications",
+      "category": "knowledge_graph",
+      "reason": "知识图谱综述（Ji 2022），非沥青材料",
+      "tables": 9
+    },
+    {
+      "sourcePath": "reference/推荐算法/Karpukhin 等 - 2020 - Dense Passage Retrieval for Open-Domain Question Answering.pdf",
+      "docTitle": "Dense Passage Retrieval for Open-Domain Question Answering",
+      "category": "dpr",
+      "reason": "DPR 开放域问答检索论文（Karpukhin 2020），信息检索方法类",
+      "tables": 7
+    },
+    {
+      "sourcePath": "reference/推荐算法/Peng 等 - 2026 - Graph Retrieval-Augmented Generation A Survey.pdf",
+      "docTitle": "Graph Retrieval-Augmented Generation: A Survey",
+      "category": "generic_ml",
+      "reason": "图检索增强生成（Graph RAG）综述，非沥青领域",
+      "tables": 1
+    },
+    {
+      "sourcePath": "reference/推荐算法/Venugopal和Olivetti - 2024 - MatKG An autonomously generated knowledge graph in Material Science.pdf",
+      "docTitle": "MatKG: An autonomously generated knowledge graph in Material Science",
+      "category": "knowledge_graph",
+      "reason": "材料科学知识图谱生成方法（MatKG），非沥青领域内容",
+      "tables": 1
+    },
+    {
+      "sourcePath": "reference/推荐算法/Wang 等 - 2024 - A survey on large language model based autonomous agents.pdf",
+      "docTitle": "Wang 等 - 2024 - A survey on large language model based autonomous agents",
+      "category": "llm_agent",
+      "reason": "LLM 智能体综述（Wang 2024），非沥青材料",
+      "tables": 3
+    },
+    {
+      "sourcePath": "reference/推荐算法/Xu 等 - 2023 - Knowledge graph and CBR-based approach for automated analysis of bridge operational accidents Case.pdf",
+      "docTitle": "Knowledge graph and CBR-based approach for automated analysis of bridge operational accidents: Case representation and retrieval",
+      "category": "knowledge_graph",
+      "reason": "桥梁运营事故知识图谱 + CBR 方法论文，非沥青材料",
+      "tables": 8
+    },
+    {
+      "sourcePath": "reference/推荐算法/Zhong 等 - 2024 - A Comprehensive Survey on Automatic Knowledge Graph Construction-1.pdf",
+      "docTitle": "A Comprehensive Survey on Automatic Knowledge Graph Construction",
+      "category": "knowledge_graph",
+      "reason": "知识图谱自动构建综述（Zhong 2024），非沥青材料",
+      "tables": 7
+    },
+    {
+      "sourcePath": "reference/推荐算法/Zhong 等 - 2024 - A Comprehensive Survey on Automatic Knowledge Graph Construction.pdf",
+      "docTitle": "Zhong 等 - 2024 - A Comprehensive Survey on Automatic Knowledge Graph Construction",
+      "category": "knowledge_graph",
+      "reason": "知识图谱自动构建综述（Zhong 2024），非沥青材料",
+      "tables": 7
+    }
+  ]
+}
