@@ -13,6 +13,8 @@ const props = defineProps<{
   highlightId?: string | null
   /** 灵动层：定位后的 600ms 背景 flash（一次性）。 */
   flashId?: string | null
+  /** T14：外部持续定位高亮（可选；不传时行为与既有一致）。 */
+  activeId?: string | null
 }>()
 
 
@@ -118,6 +120,7 @@ function toggle(id: string): void {
             'is-expanded': expandedIds.has(hit.chunkId),
             'is-highlighted': highlightId === hit.chunkId,
             'is-flash': flashId === hit.chunkId,
+            'is-active': activeId != null && activeId === hit.chunkId,
           }"
           :data-evidence-id="hit.chunkId"
           data-testid="evidence-item"
@@ -203,6 +206,11 @@ function toggle(id: string): void {
 .evidence-item.is-highlighted {
   border-color: var(--el-color-primary);
   box-shadow: 0 0 0 1px var(--el-color-primary);
+}
+
+.evidence-item.is-active {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
 }
 
 /* 灵动层：定位 flash（一次性 600ms 背景高亮） */
