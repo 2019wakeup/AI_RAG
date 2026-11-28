@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import QaAnswer from '@/components/QaAnswer.vue'
+import { useEvidenceAnchor } from '@/composables/useEvidenceAnchor'
 import { DOC_TYPE_LABELS } from '@/utils/labels'
 import { useQaStore } from '@/stores/qa'
+import type { QaCitation } from '@ai-rag/contracts'
 
 /**
  * 问答视图（T13）：输入 → 流式提问（api/qa.askStream）→ 答案 + 证据卡片。
- * 拒答/追问的完整 UI 在 T21 收口；[n] 角标定位在 T14 接入（证据卡片已带 data-evidence-id）。
+ * 拒答/追问的完整 UI 在 T21 收口；T14 接入 [n] 角标：点击 → 对应证据卡滚动定位 + 700ms 高亮。
  */
 const store = useQaStore()
 const question = ref('')
+const { highlightId, flashId, anchorTo } = useEvidenceAnchor()
+
+function onCite(citation: QaCitation): void {
+  void anchorTo(citation.chunkId)
+}
 
 const EXAMPLES = [
   'SBS 改性沥青软化点要求',
@@ -100,7 +108,7 @@ function ask(q?: string): void {
         <ul v-else-if="store.needInfo.length" class="qa-needinfo" data-testid="qa-needinfo">
           <li v-for="slot in store.needInfo" :key="slot">{{ slot }}</li>
         </ul>
-        <p v-if="store.answer" class="qa-answer-text">{{ store.answer }}</p>
+        <QaAnswer v-if="store.answer" :answer="store.answer" :citations="store.citations" @cite="onCite" />
         <p class="qa-trace" data-testid="qa-trace">
           命中 {{ store.trace?.hitCount ?? 0 }} 块 · 引用 {{ store.citations.length }} 条
           <template v-if="store.trace?.retrievalMs != null"> · 检索 {{ store.trace.retrievalMs }} ms</template>
@@ -112,7 +120,13 @@ function ask(q?: string): void {
         <template #header>证据（{{ store.citations.length }}）</template>
         <el-empty v-if="store.citations.length === 0" description="本次没有可引用的原文证据" :image-size="48" />
         <div v-else>
-          <div v-for="citation in store.citations" :key="citation.chunkId" class="qa-citation" :data-evidence-id="citation.chunkId">
+          <div
+            v-for="citation in store.citations"
+            :key="citation.chunkId"
+            class="qa-citation"
+            :class="{ 'is-highlighted': highlightId === citation.chunkId, 'is-flash': flashId === citation.chunkId }"
+            :data-evidence-id="citation.chunkId"
+          >
             <div class="qa-citation-head">
               <span class="qa-cite-n" data-testid="qa-cite-n">[{{ citation.n }}]</span>
               <el-tag size="small" effect="plain">{{ DOC_TYPE_LABELS[citation.docType] ?? citation.docType }}</el-tag>
@@ -139,9 +153,10 @@ function ask(q?: string): void {
 .qa-refused { font-weight: 600; }
 .qa-refused-reason { color: var(--el-text-color-secondary); font-weight: 400; }
 .qa-needinfo { margin: 0; padding-left: 20px; }
-.qa-answer-text { white-space: pre-line; line-height: 1.7; margin: 0 0 10px; }
 .qa-trace { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--el-text-color-secondary); }
-.qa-citation { padding: 10px 0; border-top: 1px solid var(--app-border); }
+.qa-citation { padding: 10px 0; border-top: 1px solid var(--app-border); border-left: 3px solid transparent; padding-left: 8px; transition: background 0.18s ease, border-color 0.18s ease; }
+.qa-citation.is-highlighted { border-left-color: var(--el-color-primary); }
+.qa-citation.is-flash { background: var(--el-color-primary-light-8); }
 .qa-citation:first-child { border-top: none; }
 .qa-citation-head { display: flex; align-items: center; gap: 8px; }
 .qa-cite-n { font-weight: 600; color: var(--el-color-primary); }
