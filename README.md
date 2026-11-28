@@ -9,7 +9,7 @@
 
 - 领域：**沥青路面养护材料**（规范条文 / 论文题录 / 论文全文 / 定量表格 / 材料知识条目 / 企业资料）
 - 技术栈：Vue 3 + Hono + SQLite FTS5 / LanceDB + transformers.js 本地嵌入 + 可选 LLM
-- 规模：语料 6 类、**11,014 块 / 371 文档**（T15 域外剔除后，tables 1,041→934、表格 docId 107→83）；检索金标准 38 条；单测 **508 passed / 3 skipped**
+- 规模：语料 6 类、**11,014 块 / 371 文档**（T15 域外剔除后，tables 1,041→934、表格 docId 107→83）；检索金标准 38 条；单测 **517 passed / 3 skipped**
 - 现状：检索、语料、证据结构与推荐下游应用**已具备**；**问答编排与可信拒答是本课程设计的核心待交付项**（见 [当前状态](#6-当前状态)）
 
 ---
@@ -255,7 +255,7 @@ E2E_BASE_URL=http://127.0.0.1:3011 pnpm e2e
 - **问答前端**：`apps/web/src/api/qa.ts`（类型化客户端 + 六类错误归一）、`stores/qa.ts`（idle→loading→done|error、partial 保留）与 **问答页 `views/QaView.vue`**（空/加载/错误/答案四态 + 证据卡片 + `/qa` 路由与导航，T12/T13）已就绪。
 - **问答契约**：`QaRequest` / `QaResponse` / `QaCitation` / `QaRefusalReason` / `RefusalDecision` / `NeedInfoSlot` 已在 `packages/contracts` 定义（契约先行）。
 - **推荐下游应用**：5 案例端到端 + 确定性复跑 + 三档降级（LLM/A/C 适配器/LanceDB→SQLite）。
-- **工程质量**：`pnpm typecheck` + `pnpm test`（**508 passed / 3 skipped**）+ GitHub Actions CI。
+- **工程质量**：`pnpm typecheck` + `pnpm test`（**517 passed / 3 skipped**）+ GitHub Actions CI。
 
 ### 🚧 待实现（课程设计核心，按 [任务拓扑](docs/plan/task-topology.md) 推进）
 
