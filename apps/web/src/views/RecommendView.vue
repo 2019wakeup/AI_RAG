@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, shallowRef, useTemplate
 import { useRoute, useRouter } from 'vue-router'
 
 import { ripple } from '@/composables/ripple'
+import { useEvidenceAnchor } from '@/composables/useEvidenceAnchor'
 import { useCountUp } from '@/composables/useCountUp'
 import { getCases } from '@/api/client'
 import { useRecommendStore } from '@/stores/recommend'
@@ -227,43 +228,26 @@ watch(
   { immediate: true },
 )
 
-// ---- 报告证据角标（UI二轮）：点击 → 高亮 + 展开所属候选 + 滚动定位 ----
-const highlightId = shallowRef<string | null>(null)
+// ---- 报告证据角标（UI二轮）：点击 → 高亮 + 展开所属候选 + 滚动定位（T14 起逻辑在 useEvidenceAnchor）----
+const { highlightId, flashId: flashEvidenceId, toast: evidenceToast, anchorTo } = useEvidenceAnchor()
 const caseSelectRef = useTemplateRef('caseSelect')
 
 async function onCite(evidenceId: string): Promise<void> {
-  highlightId.value = evidenceId
-  const ownerIds = (report.value?.candidates ?? [])
-    .filter((c) => (c.evidenceIds ?? []).includes(evidenceId))
-    .map((c) => c.id)
-  if (ownerIds.length > 0) {
-    const next = new Set(expandedIds.value)
-    for (const id of ownerIds) next.add(id)
-    expandedIds.value = next
-  }
-  await nextTick()
-  const el = document.querySelector(`[data-evidence-id="${CSS.escape(evidenceId)}"]`)
-  ;(el as HTMLElement | null)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
-
-  // 灵动层：定位微确认——目标证据卡 600ms flash + 右上角 toast（1.6s 自动消失）
-  flashEvidenceId.value = evidenceId
-  if (flashTimer) clearTimeout(flashTimer)
-  flashTimer = setTimeout(() => {
-    flashEvidenceId.value = null
-  }, 700)
   const index = (report.value?.evidence ?? []).findIndex((e) => e.chunkId === evidenceId)
-  evidenceToast.value = `已定位证据 ${index >= 0 ? index + 1 : '—'}`
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    evidenceToast.value = ''
-  }, 1600)
+  await anchorTo(evidenceId, {
+    onExpand: (id) => {
+      const ownerIds = (report.value?.candidates ?? [])
+        .filter((c) => (c.evidenceIds ?? []).includes(id))
+        .map((c) => c.id)
+      if (ownerIds.length > 0) {
+        const next = new Set(expandedIds.value)
+        for (const ownerId of ownerIds) next.add(ownerId)
+        expandedIds.value = next
+      }
+    },
+    toastText: `已定位证据 ${index >= 0 ? index + 1 : '—'}`,
+  })
 }
-
-// 灵动层：定位微确认状态
-const flashEvidenceId = shallowRef<string | null>(null)
-const evidenceToast = shallowRef('')
-let flashTimer: ReturnType<typeof setTimeout> | undefined
-let toastTimer: ReturnType<typeof setTimeout> | undefined
 
 // ---- 空态引导卡（UI二轮）----
 function focusCaseSelect(): void {
@@ -307,8 +291,6 @@ watch(
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   if (phaseTimer) clearInterval(phaseTimer)
-  if (flashTimer) clearTimeout(flashTimer)
-  if (toastTimer) clearTimeout(toastTimer)
   window.removeEventListener('keydown', onKeydown)
 })
 
